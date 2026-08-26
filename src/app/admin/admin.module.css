@@ -8,7 +8,8 @@
 .nav svg { width: 18px; height: 18px; }
 .sidebarFoot { margin-top: auto; padding: 18px 10px 0; border-top: 1px solid var(--color-border); }
 .sidebarFoot span { display: block; overflow: hidden; text-overflow: ellipsis; color: var(--color-muted); font-size: .72rem; }
-.sidebarFoot a { display: inline-block; margin-top: 8px; color: var(--color-text); font-size: .8rem; }
+.sidebarFoot form { margin-top: 8px; }
+.logoutButton { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: var(--color-text); cursor: pointer; font: inherit; font-size: .8rem; }
 .themeToggle { width: 34px; height: 34px; display: grid; place-items: center; margin: 0 0 12px; border: 1px solid var(--color-border); border-radius: 9px; color: var(--color-muted); background: var(--color-surface); cursor: pointer; }
 .themeToggle svg { width: 16px; height: 16px; }
 .content { min-width: 0; padding: 38px clamp(22px, 5vw, 68px) 70px; }

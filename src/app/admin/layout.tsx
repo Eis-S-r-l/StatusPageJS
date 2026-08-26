@@ -41,7 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <aside className={styles.sidebar}>
             <Link className={styles.brand} href="/admin"><span className={styles.mark}>{appearance.companyName.slice(0, 1).toUpperCase()}</span><span>{appearance.companyName} Status Admin</span></Link>
             <nav className={styles.nav}>{links.map(([label, href, Icon]) => <Link href={href} key={href}><Icon aria-hidden="true" />{label}</Link>)}</nav>
-            <div className={styles.sidebarFoot}><ThemeToggle className={styles.themeToggle} /><Bell size={16} aria-hidden="true" /><span>{session.email ?? session.name ?? session.subject}</span><Link href="/api/auth/logout"><LogOut size={13} /> Sign out</Link></div>
+            <div className={styles.sidebarFoot}><ThemeToggle className={styles.themeToggle} /><Bell size={16} aria-hidden="true" /><span>{session.email ?? session.name ?? session.subject}</span><form action="/api/auth/logout" method="get"><button className={styles.logoutButton} type="submit"><LogOut size={13} /> Sign out</button></form></div>
           </aside>
           <main className={styles.content}>{children}</main>
         </div>}
