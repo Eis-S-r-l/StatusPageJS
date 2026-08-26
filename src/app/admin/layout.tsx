@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Script from "next/script";
+import { connection } from "next/server";
 import { Bell, CalendarClock, Gauge, LogOut, Palette, Settings, Siren, Users, Wrench } from "lucide-react";
 
 import { fontClassName } from "@/app/fonts";
@@ -26,6 +27,9 @@ const links = [
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Authentication and appearance configuration are supplied to the Docker
+  // container at runtime, not while the reusable image is being built.
+  await connection();
   const configured = Boolean(getAuthConfig()) || isDevAuthEnabled();
   const session = configured ? await readAdminSession() : null;
   const appearance = await loadPublicAppearance();
