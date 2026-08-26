@@ -4,6 +4,7 @@ import * as oidc from "openid-client";
 
 import { getAuthConfig, OIDC_FLOW_COOKIE } from "@/modules/auth/config";
 import { getOidcConfiguration } from "@/modules/auth/oidc";
+import { buildPublicAppUrl } from "@/modules/auth/urls";
 
 export async function GET() {
   try {
@@ -30,8 +31,14 @@ export async function GET() {
       nonce,
     });
     return NextResponse.redirect(url);
-  } catch {
+  } catch (error) {
+    console.error(
+      "Cognito login failed",
+      error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error",
+    );
     const path = getAuthConfig() ? "/admin/login-error" : "/admin/setup-required";
-    return NextResponse.redirect(new URL(path, process.env.APP_URL ?? "http://localhost:3000"));
+    return NextResponse.redirect(
+      buildPublicAppUrl(path, process.env.APP_URL, "http://localhost:3000"),
+    );
   }
 }

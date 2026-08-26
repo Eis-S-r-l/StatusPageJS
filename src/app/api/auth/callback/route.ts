@@ -6,6 +6,7 @@ import { belongsToCognitoGroup } from "@/modules/auth/authorization";
 import { OIDC_FLOW_COOKIE, SESSION_COOKIE } from "@/modules/auth/config";
 import { getOidcConfiguration } from "@/modules/auth/oidc";
 import { adminSessionCookieOptions, createSessionToken } from "@/modules/auth/session";
+import { buildOidcCallbackUrl, buildPublicAppUrl } from "@/modules/auth/urls";
 
 interface FlowState { verifier: string; state: string; nonce: string }
 
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
     if (!encoded) throw new Error("Login flow expired");
     const flow = JSON.parse(Buffer.from(encoded, "base64url").toString()) as FlowState;
     const { configuration, environment } = await getOidcConfiguration();
-    const tokens = await oidc.authorizationCodeGrant(configuration, new URL(request.url), {
+    const callbackUrl = buildOidcCallbackUrl(environment.COGNITO_REDIRECT_URI, request.url);
+    const tokens = await oidc.authorizationCodeGrant(configuration, callbackUrl, {
       pkceCodeVerifier: flow.verifier,
       expectedState: flow.state,
       expectedNonce: flow.nonce,
@@ -35,8 +37,15 @@ export async function GET(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE, token, adminSessionCookieOptions);
     response.cookies.delete(OIDC_FLOW_COOKIE);
     return response;
-  } catch {
-    const response = NextResponse.redirect(new URL("/admin/login-error", request.url));
+  } catch (error) {
+    console.error(
+      "Cognito callback failed",
+      error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error",
+    );
+    const fallbackUrl = process.env.COGNITO_REDIRECT_URI ?? request.url;
+    const response = NextResponse.redirect(
+      buildPublicAppUrl("/admin/login-error", process.env.APP_URL, fallbackUrl),
+    );
     response.cookies.delete(SESSION_COOKIE);
     response.cookies.delete(OIDC_FLOW_COOKIE);
     return response;
