@@ -7,6 +7,7 @@ const authEnvironment = z.object({
   COGNITO_CLIENT_ID: z.string().min(1),
   COGNITO_CLIENT_SECRET: z.string().optional(),
   COGNITO_DOMAIN: z.string().url(),
+  COGNITO_ADMIN_GROUP: z.string().trim().min(1),
   COGNITO_REDIRECT_URI: z.string().url(),
   COGNITO_LOGOUT_REDIRECT_URI: z.string().url(),
   SESSION_SECRET: z.string().min(32),

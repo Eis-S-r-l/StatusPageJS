@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import * as oidc from "openid-client";
 
+import { belongsToCognitoGroup } from "@/modules/auth/authorization";
 import { OIDC_FLOW_COOKIE, SESSION_COOKIE } from "@/modules/auth/config";
 import { getOidcConfiguration } from "@/modules/auth/oidc";
 import { adminSessionCookieOptions, createSessionToken } from "@/modules/auth/session";
@@ -22,6 +23,9 @@ export async function GET(request: NextRequest) {
     });
     const claims = tokens.claims();
     if (!claims?.sub) throw new Error("Identity token is missing a subject");
+    if (!belongsToCognitoGroup(claims, environment.COGNITO_ADMIN_GROUP)) {
+      throw new Error("Identity is not in the configured administrator group");
+    }
     const token = await createSessionToken({
       subject: claims.sub,
       email: typeof claims.email === "string" ? claims.email : undefined,
@@ -33,6 +37,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch {
     const response = NextResponse.redirect(new URL("/admin/login-error", request.url));
+    response.cookies.delete(SESSION_COOKIE);
     response.cookies.delete(OIDC_FLOW_COOKIE);
     return response;
   }

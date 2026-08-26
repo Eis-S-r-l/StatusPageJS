@@ -363,6 +363,7 @@ Use an AWS Cognito User Pool with:
 - Accounts created or invited by administrators.
 - MFA required.
 - Cognito managed login.
+- An administrator group configured through `COGNITO_ADMIN_GROUP`; only users whose signed ID token contains that exact Cognito group may receive an admin session.
 - Secure, HTTP-only application session cookies.
 - Server-side protection for every `/admin` route and data-changing API.
 

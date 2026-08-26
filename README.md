@@ -43,7 +43,7 @@ The Compose deployment starts PostgreSQL, applies migrations, starts the Next.js
 
 Before production launch:
 
-- Configure a Cognito User Pool and app client with the callback URL shown in `.env.example`.
+- Configure a Cognito User Pool and app client with the callback URL shown in `.env.example`. Create the administrator group named by `COGNITO_ADMIN_GROUP` and add every permitted administrator to it; group names are matched exactly and case-sensitively.
 - Verify the email-sending domain in Amazon SES and request production access.
 - Register Telegram and optional Webex webhooks using strong webhook secrets.
 - Set the public Telegram bot username and optional Webex bot email so visitors can open the bot onboarding flow from the status page. Telegram accepts `/start en`, `/start it`, and `/stop`; Webex accepts `subscribe en`, `subscribe it`, and `stop`.
