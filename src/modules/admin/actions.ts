@@ -17,14 +17,29 @@ import {
   maintenances,
   maintenanceServices,
   services,
+  subscriptions,
   systemSettings,
 } from "@/db/schema";
 import { requireAdmin } from "@/modules/auth/guard";
+import { affectedServiceUnion } from "@/modules/admin/affected-services";
+import { formValues, type EventActionState, optionalUtcDate, requiredUtcDate, validateIncidentTiming, validateMaintenanceTiming } from "@/modules/admin/event-validation";
+import { richTextToPlainText, sanitizeRichText } from "@/modules/content/rich-text";
 import { enqueueEventNotifications } from "@/modules/notifications/enqueue";
+import { refreshTelegramProfile } from "@/modules/subscriptions/bot-service";
 import { recalculateAffectedServices, recalculateUptimeForAllServices } from "@/modules/uptime/recalculate";
 
 const slug = z.string().trim().min(2).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens");
 const requiredText = z.string().trim().min(1).max(500);
+const EVENT_STATUS_LABELS = {
+  investigating: { statusEn: "Investigating", statusIt: "In analisi" },
+  identified: { statusEn: "Identified", statusIt: "Identificato" },
+  monitoring: { statusEn: "Monitoring", statusIt: "In monitoraggio" },
+  resolved: { statusEn: "Resolved", statusIt: "Risolto" },
+  scheduled: { statusEn: "Scheduled", statusIt: "Programmata" },
+  in_progress: { statusEn: "In progress", statusIt: "In corso" },
+  completed: { statusEn: "Completed", statusIt: "Completata" },
+  cancelled: { statusEn: "Cancelled", statusIt: "Annullata" },
+} as const;
 const date = z.string().min(1).transform((value, context) => {
   const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
   const parsed = new Date(hasTimezone ? value : `${value}Z`);
@@ -34,12 +49,18 @@ const date = z.string().min(1).transform((value, context) => {
   }
   return parsed;
 });
-const optionalDate = z.preprocess(
-  (value) => value === "" || value === undefined ? undefined : value,
-  date.optional(),
-);
-
 class SafeActionError extends Error {}
+
+function eventServiceSelection(form: FormData) {
+  const parsedServiceIds = z.array(z.string().uuid()).min(1, "Select at least one service").parse(form.getAll("serviceIds"));
+  const serviceIds = [...new Set(parsedServiceIds)];
+  const uptimeServiceIds = [...new Set(z.array(z.string().uuid()).parse(form.getAll("uptimeServiceIds")))];
+  const selectedServices = new Set(serviceIds);
+  if (uptimeServiceIds.some((serviceId) => !selectedServices.has(serviceId))) {
+    throw new SafeActionError("Only affected services can count as downtime.");
+  }
+  return { serviceIds, uptimeServiceIds: new Set(uptimeServiceIds) };
+}
 
 function values(form: FormData) {
   return Object.fromEntries(form.entries());
@@ -52,13 +73,6 @@ function message(error: unknown): string {
   return "The change could not be saved. Please try again.";
 }
 
-function logFollowUpFailure(operation: string, error: unknown): void {
-  console.error(
-    `${operation} follow-up failed`,
-    error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error",
-  );
-}
-
 function finish(path: string, error?: unknown): never {
   revalidatePath("/admin");
   revalidatePath(path);
@@ -69,6 +83,45 @@ function finish(path: string, error?: unknown): never {
 
 async function audit(actorSubject: string, action: string, entityType: string, entityId?: string, after?: Record<string, unknown>) {
   await getDb().insert(auditLogs).values({ actorSubject, action, entityType, entityId, after });
+}
+
+export async function updateSubscriber(form: FormData) {
+  const admin = await requireAdmin();
+  const path = "/admin/subscribers";
+  try {
+    const input = z.object({ id: z.string().uuid(), language: z.enum(["en", "it"]) }).parse(values(form));
+    const changes = { language: input.language, receiveIncidents: form.get("receiveIncidents") === "on", receiveMaintenance: form.get("receiveMaintenance") === "on", updatedAt: new Date() };
+    const [updated] = await getDb().update(subscriptions).set(changes).where(eq(subscriptions.id, input.id)).returning({ id: subscriptions.id });
+    if (!updated) throw new SafeActionError("That subscriber no longer exists.");
+    await audit(admin.subject, "update", "subscription", input.id, changes);
+  } catch (error) { finish(path, error); }
+  finish(path);
+}
+
+export async function deleteSubscriber(form: FormData) {
+  const admin = await requireAdmin();
+  const path = "/admin/subscribers";
+  try {
+    const { id } = z.object({ id: z.string().uuid() }).parse(values(form));
+    const deleted = await getDb().transaction(async (tx) => {
+      const [row] = await tx.delete(subscriptions).where(eq(subscriptions.id, id)).returning({ id: subscriptions.id, channel: subscriptions.channel });
+      if (row) await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "delete", entityType: "subscription", entityId: id, before: { channel: row.channel } });
+      return row;
+    });
+    if (!deleted) throw new SafeActionError("That subscriber no longer exists.");
+  } catch (error) { finish(path, error); }
+  finish(path);
+}
+
+export async function refreshTelegramSubscriber(form: FormData) {
+  const admin = await requireAdmin();
+  const path = "/admin/subscribers";
+  try {
+    const { id } = z.object({ id: z.string().uuid() }).parse(values(form));
+    await refreshTelegramProfile(id);
+    await audit(admin.subject, "refresh_profile", "subscription", id);
+  } catch (error) { finish(path, error); }
+  finish(path);
 }
 
 export async function createCategory(form: FormData) {
@@ -117,187 +170,238 @@ const incidentSchema = z.object({
   slug, titleEn: requiredText, titleIt: requiredText,
   descriptionEn: z.string().trim().max(10000), descriptionIt: z.string().trim().max(10000),
   status: z.enum(["investigating", "identified", "monitoring", "resolved"]),
-  startedAt: date, resolvedAt: optionalDate, publish: z.string().optional(), affectsUptime: z.string().optional(),
+  startedAt: requiredUtcDate, resolvedAt: optionalUtcDate, publish: z.string().optional(),
 });
 
-export async function createIncident(form: FormData) {
+function eventFailure(error: unknown, form: FormData): EventActionState {
+  return { status: "error", message: message(error), values: formValues(form) };
+}
+
+function eventSuccess(messageText: string): EventActionState {
+  revalidatePath("/admin");
+  revalidatePath("/admin/incidents");
+  revalidatePath("/admin/maintenance");
+  revalidatePath("/en", "layout");
+  revalidatePath("/it", "layout");
+  return { status: "success", message: messageText, submissionId: randomUUID() };
+}
+
+export async function createIncident(_previous: EventActionState, form: FormData): Promise<EventActionState> {
   const admin = await requireAdmin();
-  const path = "/admin/incidents";
-  let saved = false;
   try {
     const input = incidentSchema.parse(values(form));
-    const serviceIds = z.array(z.string().uuid()).min(1, "Select at least one service").parse(form.getAll("serviceIds"));
+    const { serviceIds, uptimeServiceIds } = eventServiceSelection(form);
     const resolvedAt = input.resolvedAt ?? null;
-    if (input.status === "resolved" && !resolvedAt) throw new SafeActionError("A resolved incident needs a resolution time.");
-    if (input.status !== "resolved" && resolvedAt) throw new SafeActionError("Only a resolved incident can have a resolution time.");
-    if (resolvedAt && resolvedAt < input.startedAt) throw new SafeActionError("Resolution time must be after the incident start.");
-    const publishedAt = input.publish ? new Date() : null;
+    const timingError = validateIncidentTiming({ ...input, resolvedAt: input.resolvedAt });
+    if (timingError) throw new SafeActionError(timingError);
+    const now = new Date();
+    const publishedAt = input.publish ? now : null;
     const db = getDb();
     const id = randomUUID();
     await db.transaction(async (tx) => {
-      await tx.insert(incidents).values({ id, slug: input.slug, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: input.descriptionEn, descriptionIt: input.descriptionIt, status: input.status, startedAt: input.startedAt, resolvedAt, isPublished: Boolean(input.publish), publishedAt });
-      await tx.insert(incidentServices).values(serviceIds.map((serviceId) => ({ incidentId: id, serviceId, affectsUptime: Boolean(input.affectsUptime) })));
+      const descriptionEn = sanitizeRichText(input.descriptionEn);
+      const descriptionIt = sanitizeRichText(input.descriptionIt);
+      await tx.insert(incidents).values({ id, slug: input.slug, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn, descriptionIt, status: input.status, startedAt: input.startedAt, resolvedAt, isPublished: Boolean(input.publish), publishedAt });
+      await tx.insert(incidentServices).values(serviceIds.map((serviceId) => ({ incidentId: id, serviceId, affectsUptime: uptimeServiceIds.has(serviceId) })));
       await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "create", entityType: "incident", entityId: id });
+      await recalculateAffectedServices(serviceIds, { tx, now });
+      if (input.publish) await enqueueEventNotifications({ kind: "incident", sourceId: id, slug: input.slug, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: richTextToPlainText(descriptionEn), descriptionIt: richTextToPlainText(descriptionIt), descriptionHtmlEn: descriptionEn, descriptionHtmlIt: descriptionIt, ...EVENT_STATUS_LABELS[input.status], startsAt: input.startedAt, endsAt: resolvedAt }, { db: tx });
     });
-    saved = true;
-    await recalculateAffectedServices(serviceIds);
-    if (input.publish) await enqueueEventNotifications({ kind: "incident", sourceId: id, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: input.descriptionEn, descriptionIt: input.descriptionIt });
-  } catch (error) {
-    if (saved) logFollowUpFailure("Incident creation", error);
-    finish(path, saved ? new SafeActionError("The incident was saved, but a follow-up uptime or notification job failed. Retry the refresh before relying on the public metric.") : error);
-  }
-  finish(path);
+    return eventSuccess("Incident created.");
+  } catch (error) { return eventFailure(error, form); }
 }
 
 const incidentUpdateSchema = z.object({
   id: z.string().uuid(),
   status: z.enum(["investigating", "identified", "monitoring", "resolved"]),
-  resolvedAt: optionalDate,
-  messageEn: requiredText,
-  messageIt: requiredText,
+  resolvedAt: optionalUtcDate,
+  messageEn: z.string().trim().min(1).max(10000),
+  messageIt: z.string().trim().min(1).max(10000),
   publish: z.string().optional(),
 });
 
-export async function updateIncident(form: FormData) {
+export async function updateIncident(_previous: EventActionState, form: FormData): Promise<EventActionState> {
   const admin = await requireAdmin();
-  const path = "/admin/incidents";
-  let saved = false;
   try {
     const input = incidentUpdateSchema.parse(values(form));
     const db = getDb();
-    const [incident] = await db.select().from(incidents).where(eq(incidents.id, input.id)).limit(1);
-    if (!incident || incident.archivedAt) throw new SafeActionError("That incident is no longer available.");
-    const links = await db.select({ serviceId: incidentServices.serviceId }).from(incidentServices).where(eq(incidentServices.incidentId, input.id));
-    const serviceIds = links.map((link) => link.serviceId);
-    const resolvedAt = input.status === "resolved" ? input.resolvedAt : null;
-    if (input.status === "resolved" && !resolvedAt) throw new SafeActionError("A resolved incident needs a resolution time.");
-    if (resolvedAt && resolvedAt < incident.startedAt) throw new SafeActionError("Resolution time must be after the incident start.");
     const updateId = randomUUID();
     const now = new Date();
-    const publishing = Boolean(input.publish) && !incident.isPublished;
-    const willBePublished = incident.isPublished || publishing;
     await db.transaction(async (tx) => {
-      await tx.update(incidents).set({ status: input.status, resolvedAt, isPublished: willBePublished, publishedAt: incident.publishedAt ?? (publishing ? now : null), updatedAt: now }).where(eq(incidents.id, input.id));
+      const [incident] = await tx.select().from(incidents).where(eq(incidents.id, input.id)).limit(1);
+      if (!incident || incident.archivedAt) throw new SafeActionError("That incident is no longer available.");
+      const links = await tx.select({ serviceId: incidentServices.serviceId }).from(incidentServices).where(eq(incidentServices.incidentId, input.id));
+      const serviceIds = links.map((link) => link.serviceId);
+      const resolvedAt = input.status === "resolved" ? input.resolvedAt : undefined;
+      const timingError = validateIncidentTiming({ status: input.status, startedAt: incident.startedAt, resolvedAt }, now);
+      if (timingError) throw new SafeActionError(timingError);
+      const publishing = Boolean(input.publish) && !incident.isPublished;
+      const willBePublished = incident.isPublished || publishing;
+      const messageEn = sanitizeRichText(input.messageEn);
+      const messageIt = sanitizeRichText(input.messageIt);
+      await tx.update(incidents).set({ status: input.status, resolvedAt: resolvedAt ?? null, isPublished: willBePublished, publishedAt: incident.publishedAt ?? (publishing ? now : null), updatedAt: now }).where(eq(incidents.id, input.id));
       await tx.insert(incidentUpdates).values({
         id: updateId,
         incidentId: input.id,
         status: input.status,
-        messageEn: input.messageEn,
-        messageIt: input.messageIt,
+        messageEn,
+        messageIt,
         effectiveAt: now,
         publishedAt: willBePublished ? now : null,
       });
       await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "update", entityType: "incident", entityId: input.id, after: { status: input.status, resolvedAt: resolvedAt?.toISOString() ?? null } });
+      await recalculateAffectedServices(serviceIds, { tx, now });
+      if (willBePublished) await enqueueEventNotifications({
+        kind: "incident", notificationType: publishing ? "incident" : "incident_update", versionKey: publishing ? undefined : updateId,
+        sourceId: input.id, slug: incident.slug, serviceIds, titleEn: incident.titleEn, titleIt: incident.titleIt,
+        descriptionEn: richTextToPlainText(publishing ? incident.descriptionEn : messageEn), descriptionHtmlEn: publishing ? incident.descriptionEn : messageEn,
+        descriptionIt: richTextToPlainText(publishing ? incident.descriptionIt : messageIt), descriptionHtmlIt: publishing ? incident.descriptionIt : messageIt,
+        ...EVENT_STATUS_LABELS[input.status], startsAt: incident.startedAt, endsAt: resolvedAt,
+      }, { db: tx });
     });
-    saved = true;
-    await recalculateAffectedServices(serviceIds);
-    if (willBePublished) await enqueueEventNotifications({
-      kind: "incident",
-      notificationType: publishing ? "incident" : "incident_update",
-      versionKey: publishing ? undefined : updateId,
-      sourceId: input.id,
-      serviceIds,
-      titleEn: incident.titleEn,
-      titleIt: incident.titleIt,
-      descriptionEn: publishing ? incident.descriptionEn : input.messageEn,
-      descriptionIt: publishing ? incident.descriptionIt : input.messageIt,
+    return eventSuccess("Timeline update added.");
+  } catch (error) { return eventFailure(error, form); }
+}
+
+export async function editIncident(_previous: EventActionState, form: FormData): Promise<EventActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = incidentSchema.extend({ id: z.string().uuid() }).parse(values(form));
+    const { serviceIds, uptimeServiceIds } = eventServiceSelection(form);
+    const timingError = validateIncidentTiming({ ...input, resolvedAt: input.resolvedAt });
+    if (timingError) throw new SafeActionError(timingError);
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(incidents).where(eq(incidents.id, input.id)).limit(1);
+      if (!current || current.archivedAt) throw new SafeActionError("That incident is no longer available.");
+      if (current.isPublished && input.status !== current.status) throw new SafeActionError("Use Add update to change the status of a published incident.");
+      const oldLinks = await tx.select({ serviceId: incidentServices.serviceId }).from(incidentServices).where(eq(incidentServices.incidentId, input.id));
+      const publishing = Boolean(input.publish) && !current.isPublished;
+      const descriptionEn = sanitizeRichText(input.descriptionEn);
+      const descriptionIt = sanitizeRichText(input.descriptionIt);
+      await tx.update(incidents).set({ slug: input.slug, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn, descriptionIt, status: input.status, startedAt: input.startedAt, resolvedAt: input.resolvedAt ?? null, isPublished: current.isPublished || publishing, publishedAt: current.publishedAt ?? (publishing ? now : null), updatedAt: now }).where(eq(incidents.id, input.id));
+      await tx.delete(incidentServices).where(eq(incidentServices.incidentId, input.id));
+      await tx.insert(incidentServices).values(serviceIds.map((serviceId) => ({ incidentId: input.id, serviceId, affectsUptime: uptimeServiceIds.has(serviceId) })));
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "edit", entityType: "incident", entityId: input.id });
+      await recalculateAffectedServices(affectedServiceUnion(oldLinks.map((link) => link.serviceId), serviceIds), { tx, now });
+      if (publishing) await enqueueEventNotifications({ kind: "incident", sourceId: input.id, slug: input.slug, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: richTextToPlainText(descriptionEn), descriptionIt: richTextToPlainText(descriptionIt), descriptionHtmlEn: descriptionEn, descriptionHtmlIt: descriptionIt, ...EVENT_STATUS_LABELS[input.status], startsAt: input.startedAt, endsAt: input.resolvedAt }, { db: tx });
     });
-  } catch (error) { finish(path, saved ? new SafeActionError("The incident update was saved, but uptime or notifications could not be refreshed. The worker will retry active uptime calculations.") : error); }
-  finish(path);
+    return eventSuccess("Incident saved.");
+  } catch (error) { return eventFailure(error, form); }
 }
 
 const maintenanceSchema = z.object({
   slug, titleEn: requiredText, titleIt: requiredText,
   descriptionEn: z.string().trim().max(10000), descriptionIt: z.string().trim().max(10000),
   status: z.enum(["scheduled", "in_progress", "completed", "cancelled"]),
-  scheduledStartAt: date, scheduledEndAt: date, actualStartAt: optionalDate, actualEndAt: optionalDate, publish: z.string().optional(), affectsUptime: z.string().optional(),
+  scheduledStartAt: requiredUtcDate, scheduledEndAt: requiredUtcDate, actualStartAt: optionalUtcDate, actualEndAt: optionalUtcDate, publish: z.string().optional(),
 });
 
-export async function createMaintenance(form: FormData) {
+export async function createMaintenance(_previous: EventActionState, form: FormData): Promise<EventActionState> {
   const admin = await requireAdmin();
-  const path = "/admin/maintenance";
-  let saved = false;
   try {
     const input = maintenanceSchema.parse(values(form));
-    if (input.scheduledEndAt < input.scheduledStartAt) throw new SafeActionError("Scheduled end must be after the start.");
-    if (input.actualEndAt && (!input.actualStartAt || input.actualEndAt < input.actualStartAt)) throw new SafeActionError("Actual end must be after the actual start.");
-    if (input.status === "in_progress" && !input.actualStartAt) throw new SafeActionError("In-progress maintenance needs an actual start time.");
-    if (input.status === "completed" && (!input.actualStartAt || !input.actualEndAt)) throw new SafeActionError("Completed maintenance needs actual start and end times.");
-    const serviceIds = z.array(z.string().uuid()).min(1, "Select at least one service").parse(form.getAll("serviceIds"));
+    const timingError = validateMaintenanceTiming(input);
+    if (timingError) throw new SafeActionError(timingError);
+    const { serviceIds, uptimeServiceIds } = eventServiceSelection(form);
     const db = getDb();
     const id = randomUUID();
+    const now = new Date();
     await db.transaction(async (tx) => {
-      await tx.insert(maintenances).values({ id, slug: input.slug, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: input.descriptionEn, descriptionIt: input.descriptionIt, status: input.status, scheduledStartAt: input.scheduledStartAt, scheduledEndAt: input.scheduledEndAt, actualStartAt: input.actualStartAt ?? null, actualEndAt: input.actualEndAt ?? null, isPublished: Boolean(input.publish), publishedAt: input.publish ? new Date() : null });
-      await tx.insert(maintenanceServices).values(serviceIds.map((serviceId) => ({ maintenanceId: id, serviceId, affectsUptime: Boolean(input.affectsUptime) })));
+      const descriptionEn = sanitizeRichText(input.descriptionEn);
+      const descriptionIt = sanitizeRichText(input.descriptionIt);
+      await tx.insert(maintenances).values({ id, slug: input.slug, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn, descriptionIt, status: input.status, scheduledStartAt: input.scheduledStartAt, scheduledEndAt: input.scheduledEndAt, actualStartAt: input.actualStartAt ?? null, actualEndAt: input.actualEndAt ?? null, isPublished: Boolean(input.publish), publishedAt: input.publish ? now : null });
+      await tx.insert(maintenanceServices).values(serviceIds.map((serviceId) => ({ maintenanceId: id, serviceId, affectsUptime: uptimeServiceIds.has(serviceId) })));
       await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "create", entityType: "maintenance", entityId: id });
+      await recalculateAffectedServices(serviceIds, { tx, now });
+      if (input.publish) await enqueueEventNotifications({ kind: "maintenance", sourceId: id, slug: input.slug, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: richTextToPlainText(descriptionEn), descriptionIt: richTextToPlainText(descriptionIt), descriptionHtmlEn: descriptionEn, descriptionHtmlIt: descriptionIt, ...EVENT_STATUS_LABELS[input.status], startsAt: input.scheduledStartAt, endsAt: input.scheduledEndAt }, { db: tx });
     });
-    saved = true;
-    await recalculateAffectedServices(serviceIds);
-    if (input.publish) await enqueueEventNotifications({ kind: "maintenance", sourceId: id, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: input.descriptionEn, descriptionIt: input.descriptionIt });
-  } catch (error) { finish(path, saved ? new SafeActionError("The maintenance event was saved, but a follow-up uptime or notification job failed. Retry the refresh before relying on the public metric.") : error); }
-  finish(path);
+    return eventSuccess("Maintenance created.");
+  } catch (error) { return eventFailure(error, form); }
 }
 
 const maintenanceUpdateSchema = z.object({
   id: z.string().uuid(),
   status: z.enum(["scheduled", "in_progress", "completed", "cancelled"]),
-  actualStartAt: optionalDate,
-  actualEndAt: optionalDate,
+  actualStartAt: optionalUtcDate,
+  actualEndAt: optionalUtcDate,
   publish: z.string().optional(),
 });
 
-export async function updateMaintenance(form: FormData) {
+export async function updateMaintenance(_previous: EventActionState, form: FormData): Promise<EventActionState> {
   const admin = await requireAdmin();
-  const path = "/admin/maintenance";
-  let saved = false;
   try {
     const input = maintenanceUpdateSchema.parse(values(form));
-    if (input.actualEndAt && (!input.actualStartAt || input.actualEndAt < input.actualStartAt)) throw new SafeActionError("Actual end must be after the actual start.");
-    if (input.status === "in_progress" && !input.actualStartAt) throw new SafeActionError("In-progress maintenance needs an actual start time.");
-    if (input.status === "completed" && (!input.actualStartAt || !input.actualEndAt)) throw new SafeActionError("Completed maintenance needs actual start and end times.");
     const db = getDb();
-    const [maintenance] = await db.select().from(maintenances).where(eq(maintenances.id, input.id)).limit(1);
-    if (!maintenance || maintenance.archivedAt) throw new SafeActionError("That maintenance event is no longer available.");
-    const links = await db.select({ serviceId: maintenanceServices.serviceId }).from(maintenanceServices).where(eq(maintenanceServices.maintenanceId, input.id));
-    const serviceIds = links.map((link) => link.serviceId);
     const versionKey = randomUUID();
     const now = new Date();
-    const publishing = Boolean(input.publish) && !maintenance.isPublished;
-    const willBePublished = maintenance.isPublished || publishing;
     await db.transaction(async (tx) => {
+      const [maintenance] = await tx.select().from(maintenances).where(eq(maintenances.id, input.id)).limit(1);
+      if (!maintenance || maintenance.archivedAt) throw new SafeActionError("That maintenance event is no longer available.");
+      const timingError = validateMaintenanceTiming({ ...maintenance, ...input, actualStartAt: input.actualStartAt, actualEndAt: input.actualEndAt }, now);
+      if (timingError) throw new SafeActionError(timingError);
+      const links = await tx.select({ serviceId: maintenanceServices.serviceId }).from(maintenanceServices).where(eq(maintenanceServices.maintenanceId, input.id));
+      const serviceIds = links.map((link) => link.serviceId);
+      const publishing = Boolean(input.publish) && !maintenance.isPublished;
+      const willBePublished = maintenance.isPublished || publishing;
       await tx.update(maintenances).set({ status: input.status, actualStartAt: input.actualStartAt ?? null, actualEndAt: input.actualEndAt ?? null, isPublished: willBePublished, publishedAt: maintenance.publishedAt ?? (publishing ? now : null), updatedAt: now }).where(eq(maintenances.id, input.id));
       await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "update", entityType: "maintenance", entityId: input.id, after: { status: input.status, actualStartAt: input.actualStartAt?.toISOString() ?? null, actualEndAt: input.actualEndAt?.toISOString() ?? null } });
+      await recalculateAffectedServices(serviceIds, { tx, now });
+      if (willBePublished) {
+        const labels = EVENT_STATUS_LABELS[input.status];
+        await enqueueEventNotifications({ kind: "maintenance", notificationType: "maintenance_announcement", versionKey: publishing ? undefined : versionKey, sourceId: input.id, slug: maintenance.slug, serviceIds, titleEn: maintenance.titleEn, titleIt: maintenance.titleIt, descriptionEn: publishing ? richTextToPlainText(maintenance.descriptionEn) : `Maintenance status: ${labels.statusEn}.`, descriptionIt: publishing ? richTextToPlainText(maintenance.descriptionIt) : `Stato manutenzione: ${labels.statusIt}.`, descriptionHtmlEn: publishing ? maintenance.descriptionEn : undefined, descriptionHtmlIt: publishing ? maintenance.descriptionIt : undefined, ...labels, startsAt: input.actualStartAt ?? maintenance.scheduledStartAt, endsAt: input.actualEndAt ?? maintenance.scheduledEndAt }, { db: tx });
+      }
     });
-    saved = true;
-    await recalculateAffectedServices(serviceIds);
-    if (willBePublished) {
-      const stateEn = input.status.replace("_", " ");
-      const stateIt = ({ scheduled: "programmata", in_progress: "in corso", completed: "completata", cancelled: "annullata" } as const)[input.status];
-      await enqueueEventNotifications({ kind: "maintenance", notificationType: "maintenance_announcement", versionKey: publishing ? undefined : versionKey, sourceId: input.id, serviceIds, titleEn: maintenance.titleEn, titleIt: maintenance.titleIt, descriptionEn: publishing ? maintenance.descriptionEn : `Maintenance status: ${stateEn}.`, descriptionIt: publishing ? maintenance.descriptionIt : `Stato manutenzione: ${stateIt}.` });
-    }
-  } catch (error) { finish(path, saved ? new SafeActionError("The maintenance update was saved, but uptime or notifications could not be refreshed. The worker will retry active uptime calculations.") : error); }
-  finish(path);
+    return eventSuccess("Maintenance status updated.");
+  } catch (error) { return eventFailure(error, form); }
+}
+
+export async function editMaintenance(_previous: EventActionState, form: FormData): Promise<EventActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = maintenanceSchema.extend({ id: z.string().uuid() }).parse(values(form));
+    const timingError = validateMaintenanceTiming(input);
+    if (timingError) throw new SafeActionError(timingError);
+    const { serviceIds, uptimeServiceIds } = eventServiceSelection(form);
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(maintenances).where(eq(maintenances.id, input.id)).limit(1);
+      if (!current || current.archivedAt) throw new SafeActionError("That maintenance event is no longer available.");
+      if (current.isPublished && input.status !== current.status) throw new SafeActionError("Use Update status to change the status of published maintenance.");
+      const oldLinks = await tx.select({ serviceId: maintenanceServices.serviceId }).from(maintenanceServices).where(eq(maintenanceServices.maintenanceId, input.id));
+      const publishing = Boolean(input.publish) && !current.isPublished;
+      const descriptionEn = sanitizeRichText(input.descriptionEn);
+      const descriptionIt = sanitizeRichText(input.descriptionIt);
+      await tx.update(maintenances).set({ slug: input.slug, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn, descriptionIt, status: input.status, scheduledStartAt: input.scheduledStartAt, scheduledEndAt: input.scheduledEndAt, actualStartAt: input.actualStartAt ?? null, actualEndAt: input.actualEndAt ?? null, isPublished: current.isPublished || publishing, publishedAt: current.publishedAt ?? (publishing ? now : null), updatedAt: now }).where(eq(maintenances.id, input.id));
+      await tx.delete(maintenanceServices).where(eq(maintenanceServices.maintenanceId, input.id));
+      await tx.insert(maintenanceServices).values(serviceIds.map((serviceId) => ({ maintenanceId: input.id, serviceId, affectsUptime: uptimeServiceIds.has(serviceId) })));
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "edit", entityType: "maintenance", entityId: input.id });
+      await recalculateAffectedServices(affectedServiceUnion(oldLinks.map((link) => link.serviceId), serviceIds), { tx, now });
+      if (publishing) await enqueueEventNotifications({ kind: "maintenance", sourceId: input.id, slug: input.slug, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: richTextToPlainText(descriptionEn), descriptionIt: richTextToPlainText(descriptionIt), descriptionHtmlEn: descriptionEn, descriptionHtmlIt: descriptionIt, ...EVENT_STATUS_LABELS[input.status], startsAt: input.actualStartAt ?? input.scheduledStartAt, endsAt: input.actualEndAt ?? input.scheduledEndAt }, { db: tx });
+    });
+    return eventSuccess("Maintenance saved.");
+  } catch (error) { return eventFailure(error, form); }
 }
 
 export async function archiveEvent(form: FormData) {
   const admin = await requireAdmin();
   const input = z.object({ id: z.string().uuid(), type: z.enum(["incident", "maintenance"]) }).parse(values(form));
   const path = input.type === "incident" ? "/admin/incidents" : "/admin/maintenance";
-  let saved = false;
   try {
     const db = getDb();
-    const links = input.type === "incident"
-      ? await db.select({ serviceId: incidentServices.serviceId }).from(incidentServices).where(eq(incidentServices.incidentId, input.id))
-      : await db.select({ serviceId: maintenanceServices.serviceId }).from(maintenanceServices).where(eq(maintenanceServices.maintenanceId, input.id));
     const now = new Date();
     await db.transaction(async (tx) => {
+      const links = input.type === "incident"
+        ? await tx.select({ serviceId: incidentServices.serviceId }).from(incidentServices).where(eq(incidentServices.incidentId, input.id))
+        : await tx.select({ serviceId: maintenanceServices.serviceId }).from(maintenanceServices).where(eq(maintenanceServices.maintenanceId, input.id));
       if (input.type === "incident") await tx.update(incidents).set({ archivedAt: now, updatedAt: now }).where(eq(incidents.id, input.id));
       else await tx.update(maintenances).set({ archivedAt: now, updatedAt: now }).where(eq(maintenances.id, input.id));
       await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "archive", entityType: input.type, entityId: input.id });
+      await recalculateAffectedServices(links.map((link) => link.serviceId), { tx, now });
     });
-    saved = true;
-    await recalculateAffectedServices(links.map((link) => link.serviceId));
-  } catch (error) { finish(path, saved ? new SafeActionError("The event was archived, but uptime could not be refreshed. Run the uptime worker before relying on the public metric.") : error); }
+  } catch (error) { finish(path, error); }
   finish(path);
 }
 

@@ -2,6 +2,8 @@
 
 A bilingual, manually managed status-page system built as a Next.js modular monolith. The same application serves the public English/Italian status pages, the Cognito-protected administration area, APIs, bot webhooks, and a PostgreSQL-backed notification worker. Administrators can configure separate light and dark palettes and upload mode-specific logos and a favicon.
 
+Incident and maintenance dates are entered in the administrator's browser timezone and stored as UTC. The administration area provides full event editing, separate timeline/status updates, and restricted rich-text descriptions. Subscriber administration supports searching, notification preferences, permanent deletion, and Telegram profile names. Email subscribers can request a confirmed unsubscription from the public status page, and all notification emails include a link to that flow.
+
 The product decisions and delivery plan are recorded in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
 ## Local development
@@ -191,6 +193,14 @@ The webhook URL must be publicly reachable over HTTPS; `localhost` cannot receiv
 
 Visitors can subscribe through the public-page Telegram link or by sending `/start en` or `/start it`. They can unsubscribe with `/stop`. The application stores the Telegram chat ID and selected language in PostgreSQL; the worker uses that chat ID for published incident and maintenance notifications. Telegram bots cannot initiate a conversation, so each subscriber must first open the bot and press Start.
 
+Telegram usernames are optional and may change. The application stores the chat ID as the delivery identity, records the username/display name received by the webhook, and lets an administrator refresh an existing Telegram profile with the Bot API. `/stop` and permanent Telegram delivery errors remove the subscription and its queued jobs.
+
+## Email subscriptions
+
+The public English and Italian pages provide both subscription and unsubscription forms. Unsubscription is confirmed through a one-time email link; the confirmed action permanently deletes the subscription. Confirmation links return a localized human-readable result page rather than JSON.
+
+Incident and maintenance notifications use the configured company name and dark-header logo, contain localized event details, and include the localized unsubscription-page link. The worker always sends a plain-text alternative alongside the HTML message.
+
 ## Appearance and branding
 
 Authenticated administrators can use `/admin/appearance` to:
@@ -208,6 +218,7 @@ Visitors initially follow their operating-system color preference and can overri
 npm run typecheck
 npm run lint
 npm test
+npx drizzle-kit check
 npm run build
 ```
 

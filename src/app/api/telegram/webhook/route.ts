@@ -4,7 +4,9 @@ import { z } from "zod";
 import { parseBotCommand } from "@/modules/subscriptions/bot-command";
 import { subscribeBot, unsubscribeBot } from "@/modules/subscriptions/bot-service";
 
-const updateSchema = z.object({ message: z.object({ text: z.string().optional(), chat: z.object({ id: z.union([z.string(), z.number()]) }) }).optional() });
+const updateSchema = z.object({ message: z.object({ text: z.string().optional(), chat: z.object({
+  id: z.union([z.string(), z.number()]), username: z.string().optional(), first_name: z.string().optional(), last_name: z.string().optional(), title: z.string().optional(),
+}) }).optional() });
 
 async function reply(chatId: string, text: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -23,7 +25,9 @@ export async function POST(request: NextRequest) {
     const destination = String(update.message.chat.id);
     const command = parseBotCommand(update.message.text);
     if (command.action === "subscribe") {
-      await subscribeBot({ channel: "telegram", destination, language: command.language });
+      const chat = update.message.chat;
+      const displayName = chat.title ?? ([chat.first_name, chat.last_name].filter(Boolean).join(" ") || null);
+      await subscribeBot({ channel: "telegram", destination, language: command.language, username: chat.username ?? null, displayName });
       await reply(destination, command.language === "it" ? "Iscrizione confermata. Riceverai aggiornamenti su incidenti e manutenzioni. Invia /stop per annullare." : "Subscription confirmed. You will receive incident and maintenance updates. Send /stop to unsubscribe.");
     } else if (command.action === "unsubscribe") {
       await unsubscribeBot("telegram", destination);

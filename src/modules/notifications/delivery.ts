@@ -7,6 +7,14 @@ const payloadSchema = z.object({
 
 export interface DeliveryTarget { channel: "email" | "telegram" | "webex"; destination: string; payload: Record<string, unknown> }
 
+export class PermanentDeliveryError extends Error {
+  readonly permanent = true;
+}
+
+export function isPermanentTelegramFailure(status: number, description: string): boolean {
+  return status === 403 || (status === 400 && /chat not found|bot was blocked|user is deactivated/i.test(description));
+}
+
 function assertDeliveryAllowed() {
   if (process.env.NODE_ENV === "test" || process.env.NEXT_PHASE?.includes("build")) {
     throw new Error("External delivery is disabled during tests and builds");
@@ -30,7 +38,13 @@ export async function deliver(target: DeliveryTarget): Promise<void> {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) throw new Error("Telegram is not configured");
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: target.destination, text: content.text }), signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) throw new Error(`Telegram rejected delivery (${response.status})`);
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { error_code?: number; description?: string } | null;
+      const description = result?.description ?? "delivery rejected";
+      const permanent = isPermanentTelegramFailure(response.status, description);
+      if (permanent) throw new PermanentDeliveryError(`Telegram permanently rejected delivery (${result?.error_code ?? response.status}): ${description}`);
+      throw new Error(`Telegram rejected delivery (${response.status}): ${description}`);
+    }
     return;
   }
   const token = process.env.WEBEX_BOT_TOKEN;

@@ -60,6 +60,7 @@ export const notificationJobStatusEnum = pgEnum("notification_job_status", [
 ]);
 export const notificationTypeEnum = pgEnum("notification_type", [
   "subscription_confirmation",
+  "unsubscription_confirmation",
   "incident",
   "incident_update",
   "maintenance_announcement",
@@ -329,8 +330,12 @@ export const subscriptions = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     channel: subscriptionChannelEnum("channel").notNull(),
     destination: text("destination").notNull(),
+    channelUsername: text("channel_username"),
+    channelDisplayName: text("channel_display_name"),
     language: subscriptionLanguageEnum("language").default("en").notNull(),
     confirmationTokenHash: text("confirmation_token_hash"),
+    unsubscribeTokenHash: text("unsubscribe_token_hash"),
+    unsubscribeRequestedAt: timestamp("unsubscribe_requested_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
     receiveIncidents: boolean("receive_incidents").default(true).notNull(),
@@ -347,6 +352,7 @@ export const subscriptions = pgTable(
       table.confirmedAt,
       table.unsubscribedAt,
     ),
+    uniqueIndex("subscriptions_unsubscribe_token_unique").on(table.unsubscribeTokenHash),
   ],
 );
 

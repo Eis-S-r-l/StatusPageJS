@@ -33,9 +33,34 @@
 .field textarea { min-height: 88px; resize: vertical; }
 .checks { display: flex; flex-wrap: wrap; gap: 10px; }
 .check { display: flex; align-items: center; gap: 7px; padding: 9px 11px; border: 1px solid var(--color-border); border-radius: 9px; font-size: .8rem; }
+.serviceChecks { display: grid; gap: 8px; }
+.serviceCheck { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr); gap: 8px; }
+.serviceCheck .check:has(input:disabled) { opacity: .55; }
 .button { border: 0; border-radius: 9px; padding: 11px 16px; background: var(--color-primary); color: var(--color-primary-text); cursor: pointer; font-weight: 700; }
 .button:hover { background: var(--color-primary); }
 .dangerButton { border: 0; background: transparent; color: var(--color-danger); text-decoration: underline; cursor: pointer; font-size: .76rem; }
+.secondaryButton { border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 11px; color: var(--color-primary); background: var(--color-surface); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; }
+.pageActions { display: flex; justify-content: flex-end; margin: -10px 0 4px; }
+.rowActions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.rowActions form { margin: 0; }
+.modal { width: min(860px, calc(100% - 28px)); max-height: calc(100vh - 28px); padding: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: 15px; color: var(--color-text); background: var(--color-surface); box-shadow: 0 30px 90px color-mix(in srgb, #000 38%, transparent); }
+.modal::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
+.modalCard { max-height: calc(100vh - 30px); padding: 24px; overflow: auto; }
+.modalHeader { position: sticky; top: -24px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: -24px -24px 22px; padding: 20px 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+.modalHeader h2 { margin: 0; font-size: 1.2rem; }
+.modalHeader button { width: 34px; height: 34px; border: 0; border-radius: 8px; color: var(--color-muted); background: transparent; cursor: pointer; font-size: 1.5rem; }
+.fieldHint { color: var(--color-muted); font-size: .68rem; font-weight: 400; }
+.richField { grid-column: 1 / -1; color: var(--color-muted); font-size: .78rem; font-weight: 650; }
+.richLabel { display: block; margin-bottom: 7px; }
+.richToolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border: 1px solid var(--color-border); border-bottom: 0; border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--color-primary) 4%, var(--color-background)); }
+.richToolbar button { min-height: 30px; padding: 4px 9px; border: 1px solid transparent; border-radius: 6px; color: var(--color-text); background: transparent; cursor: pointer; }
+.richToolbar button[aria-pressed="true"] { border-color: var(--color-border); background: var(--color-surface); }
+.richEditor { min-height: 110px; padding: 10px 11px; border: 1px solid var(--color-border); border-radius: 0 0 9px 9px; color: var(--color-text); background: var(--color-surface); font: 400 .9rem var(--font-body), sans-serif; }
+.richEditor:focus { border-color: var(--color-primary); outline: 3px solid color-mix(in srgb, var(--color-primary) 16%, transparent); }
+.richEditor p { margin: 0 0 .65em; }
+.richEditor p:last-child { margin-bottom: 0; }
+.inlineError, .inlineSuccess { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-radius: 8px; color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface)); font-size: .78rem; }
+.inlineSuccess { color: var(--color-success); background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface)); }
 .list { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-border); }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 15px; background: var(--color-surface); }
 .row strong { display: block; font-size: .88rem; }
@@ -74,6 +99,12 @@
 .faviconPreview img { width: 48px; height: 48px; object-fit: contain; }
 .noAsset { color: var(--color-muted); font-size: .76rem; }
 .saveAppearance { justify-self: end; min-width: 180px; }
+.subscriberFilters { display: grid; grid-template-columns: minmax(240px, 2fr) 1fr 1fr auto; gap: 12px; align-items: end; }
+.subscriberRow { align-items: flex-start; }
+.subscriberIdentity { min-width: 0; overflow-wrap: anywhere; }
+.subscriberIdentity small { display: block; margin-top: 4px; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 20px; color: var(--color-muted); font-size: .82rem; }
+.pagination a { color: var(--color-primary); font-weight: 700; text-decoration: none; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
 @media (max-width: 980px) { .appearanceGrid, .assetGrid { grid-template-columns: 1fr; } }
-@media (max-width: 680px) { .frame { display: block; } .sidebar { position: static; width: 100%; height: auto; padding: 16px; } .brand { padding-bottom: 14px; } .nav { display: flex; overflow-x: auto; } .nav a { flex: 0 0 auto; } .sidebarFoot { display: none; } .content { padding: 26px 18px 50px; } .form, .compactForm, .colorGrid { grid-template-columns: 1fr; } .full { grid-column: auto; } .eventRow { display: grid; } .eventActions { min-width: 0; width: 100%; } .saveAppearance { width: 100%; } }
+@media (max-width: 680px) { .frame { display: block; } .sidebar { position: static; width: 100%; height: auto; padding: 16px; } .brand { padding-bottom: 14px; } .nav { display: flex; overflow-x: auto; } .nav a { flex: 0 0 auto; } .sidebarFoot { display: none; } .content { padding: 26px 18px 50px; } .form, .compactForm, .colorGrid, .subscriberFilters, .serviceCheck { grid-template-columns: 1fr; } .full, .richField { grid-column: auto; } .eventRow, .subscriberRow { display: grid; } .eventActions { min-width: 0; width: 100%; } .rowActions { justify-content: flex-start; } .saveAppearance { width: 100%; } }

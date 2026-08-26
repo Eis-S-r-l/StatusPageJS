@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 
-import { getDb, type Database } from "@/db/client";
+import { getDb, type Database, type DatabaseTransaction } from "@/db/client";
 import {
   incidents,
   incidentServices,
@@ -15,6 +15,8 @@ import { calculateUptime, type DowntimeInterval } from "./engine";
 
 export interface RecalculationOptions {
   db?: Database;
+  /** Uses an existing mutation transaction so metric writes commit atomically. */
+  tx?: DatabaseTransaction;
   now?: Date;
   /** Overrides the singleton setting, primarily for controlled imports/tests. */
   intervalDays?: number;
@@ -42,10 +44,9 @@ export async function recalculateUptimeForServices(
   const uniqueIds = [...new Set(serviceIds)];
   if (uniqueIds.length === 0) return [];
 
-  const db = options.db ?? getDb();
   const now = options.now ?? new Date();
 
-  return db.transaction(async (tx) => {
+  const recalculate = async (tx: DatabaseTransaction) => {
     let intervalDays = options.intervalDays;
     if (intervalDays === undefined) {
       const [settings] = await tx
@@ -179,7 +180,10 @@ export async function recalculateUptimeForServices(
     }
 
     return output;
-  });
+  };
+
+  if (options.tx) return recalculate(options.tx);
+  return (options.db ?? getDb()).transaction(recalculate);
 }
 
 /** Semantic mutation hook used after an incident or maintenance changes. */

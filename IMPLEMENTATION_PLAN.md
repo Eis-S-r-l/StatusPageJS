@@ -476,15 +476,17 @@ Estimated delivery is seven to nine weeks for one experienced engineer, or appro
 
 ## 16. Implementation status
 
-The initial working monolith is now in place. It includes the Next.js public and admin views, PostgreSQL schema and migrations, Cognito login flow, category/service/event administration, mutation-triggered persisted uptime calculations, a rolling refresh worker, bilingual public pages and detail timelines, configurable light/dark themes and branding, email double opt-in, Telegram and Webex command onboarding, database-backed notification delivery with retries, Docker Compose, an example Nginx virtual host, and VM setup documentation.
+The working monolith is now in place. It includes the Next.js public and admin views, PostgreSQL schema and migrations, Cognito login flow, category/service/event administration, mutation-triggered persisted uptime calculations, a rolling refresh worker, bilingual public pages and detail timelines, configurable light/dark themes and branding, email double opt-in and confirmed unsubscription, Telegram and Webex command onboarding, database-backed notification delivery with retries, Docker Compose, an example Nginx virtual host, and VM setup documentation.
+
+Incident and maintenance administration now uses browser-local datetime inputs with UTC persistence, future-time validation, state-preserving server actions, restricted English/Italian rich-text editors, list-focused modal workflows, complete base-record editing, and separate incident timeline or maintenance status updates. Event mutations, service-link changes, uptime recalculation, audit entries, and notification outbox inserts commit atomically.
+
+Subscriber administration now includes search, channel/status filters, pagination, notification-preference editing, and permanent deletion. Telegram subscriptions retain the chat ID for delivery while storing optional username/display metadata, and `/stop` or permanent blocked/not-found delivery failures delete the subscription. Localized HTML and plain-text emails use the configured branding and link to the confirmed unsubscription flow.
 
 The next implementation phase should focus on:
 
 - Running the migration and mutation flows against a disposable PostgreSQL instance in CI.
 - Adding historical CSV import with dry-run validation.
-- Adding an email unsubscribe flow and SES bounce/complaint suppression.
-- Adding public-endpoint rate limiting.
-- Adding complete editing of event details, service associations, and per-service uptime-impact flags.
+- Adding SES bounce/complaint suppression.
 - Adding an admin audit-log page and manual notification retry controls.
 - Exercising Cognito, SES, Telegram, and optional Webex with real non-production credentials.
 - Automating encrypted off-VM backup and restore verification.

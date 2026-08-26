@@ -3,6 +3,7 @@ import { ArrowLeft, Calendar, Clock, Info } from "lucide-react";
 import type { Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import type { ServiceCategory, StatusEvent } from "@/modules/status/types";
+import { SafeRichText } from "@/components/content/SafeRichText";
 import { eventStateLabel, formatDateTime } from "./format";
 import styles from "./public.module.css";
 
@@ -24,7 +25,7 @@ export function EventDetail({ event, categories, locale }: { event: StatusEvent;
         <header className={styles.detailHeader}>
           <div className={styles.detailKicker}><span>{event.kind === "incident" ? t.incident : t.maintenance}</span><span className={`${styles.eventState} ${styles[event.state]}`}>{eventStateLabel(event.state, t)}</span></div>
           <h1>{event.title[locale]}</h1>
-          <p>{event.summary[locale]}</p>
+          <SafeRichText html={event.summary[locale]} className={styles.richText} />
         </header>
         <dl className={styles.facts}>
           <div><dt><Calendar size={16} aria-hidden="true" />{t.started}</dt><dd><time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time></dd></div>
@@ -35,7 +36,7 @@ export function EventDetail({ event, categories, locale }: { event: StatusEvent;
         <section className={styles.timelineSection} aria-labelledby="timeline-title">
           <h2 id="timeline-title">{t.timeline}</h2>
           <ol className={styles.timeline}>
-            {event.timeline.map((entry) => <li key={entry.id}><span className={styles.timelineDot} aria-hidden="true" /><div><div className={styles.timelineMeta}><strong>{eventStateLabel(entry.state, t)}</strong><time dateTime={entry.publishedAt}>{formatDateTime(entry.publishedAt, locale)}</time></div><p>{entry.message[locale]}</p></div></li>)}
+            {event.timeline.map((entry) => <li key={entry.id}><span className={styles.timelineDot} aria-hidden="true" /><div><div className={styles.timelineMeta}><strong>{eventStateLabel(entry.state, t)}</strong><time dateTime={entry.publishedAt}>{formatDateTime(entry.publishedAt, locale)}</time></div><SafeRichText html={entry.message[locale]} className={styles.richText} /></div></li>)}
           </ol>
         </section>
         {event.affectsUptime && <aside className={styles.disclosure}><Info size={18} aria-hidden="true" /><p>{t.disclosure}</p></aside>}

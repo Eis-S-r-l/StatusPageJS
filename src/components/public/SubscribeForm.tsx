@@ -18,6 +18,7 @@ const copy = {
     error: "The subscription could not be created. Please try again.",
     telegram: "Subscribe on Telegram",
     webex: "Message the Webex bot",
+    unsubscribe: "Manage or unsubscribe",
   },
   it: {
     email: "Email di lavoro",
@@ -29,6 +30,7 @@ const copy = {
     error: "Non è stato possibile completare l'iscrizione. Riprova.",
     telegram: "Iscriviti su Telegram",
     webex: "Scrivi al bot Webex",
+    unsubscribe: "Gestisci o annulla l’iscrizione",
   },
 } as const;
 
@@ -80,6 +82,7 @@ export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { loc
         {telegramBot && <a href={`https://t.me/${telegramBot}?start=${locale}`} target="_blank" rel="noreferrer">{t.telegram}</a>}
         {webexBotEmail && <a href={`webexteams://im?email=${encodeURIComponent(webexBotEmail)}&message=${encodeURIComponent(`subscribe ${locale}`)}`}>{t.webex}</a>}
       </div>}
+      <div className={styles.botLinks}><a href={`/${locale}/unsubscribe`}>{t.unsubscribe}</a></div>
     </form>
   );
 }

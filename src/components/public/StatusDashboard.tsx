@@ -5,6 +5,7 @@ import { getDictionary } from "@/modules/i18n/dictionaries";
 import type { PublicStatusSnapshot, ServiceCategory, StatusEvent } from "@/modules/status/types";
 import { eventStateLabel, formatDateTime } from "./format";
 import { SubscribeForm } from "./SubscribeForm";
+import { SafeRichText } from "@/components/content/SafeRichText";
 import styles from "./public.module.css";
 
 function EventCard({ event, locale, categories }: { event: StatusEvent; locale: Locale; categories: ServiceCategory[] }) {
@@ -18,7 +19,7 @@ function EventCard({ event, locale, categories }: { event: StatusEvent; locale: 
         <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time>
       </div>
       <h3><Link href={href}>{event.title[locale]}</Link></h3>
-      <p>{event.summary[locale]}</p>
+      <SafeRichText html={event.summary[locale]} className={styles.richText} />
       <div className={styles.eventFooter}>
         <span>{t.affectedServices}: {serviceNames.join(", ")}</span>
         <Link href={href}>{t.viewDetails} <ArrowRight size={15} aria-hidden="true" /></Link>

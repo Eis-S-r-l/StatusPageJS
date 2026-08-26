@@ -4,6 +4,7 @@ import { EventDetail } from "@/components/public/EventDetail";
 import { PublicShell } from "@/components/public/PublicShell";
 import { isLocale, otherLocale } from "@/modules/i18n/config";
 import { publicStatusRepository } from "@/modules/status/repository";
+import { richTextToPlainText } from "@/modules/content/rich-text";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const event = await publicStatusRepository.getMaintenance(slug);
   if (!event) return {};
   const title = `${event.title[locale]} · EIS`;
-  const description = event.summary[locale];
+  const description = richTextToPlainText(event.summary[locale]);
   return {
     title,
     description,

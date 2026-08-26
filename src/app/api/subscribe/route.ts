@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requestEmailSubscription } from "@/modules/subscriptions/service";
+import { allowSubscriptionRequest, requestClientKey } from "@/modules/subscriptions/rate-limit";
 
 const schema = z.object({
   email: z.email().max(320), language: z.enum(["en", "it"]).default("en"),
@@ -13,6 +14,9 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get("content-type") ?? "";
     const raw = contentType.includes("application/json") ? await request.json() : Object.fromEntries(await request.formData());
     const parsed = schema.parse({ ...raw, receiveIncidents: raw.receiveIncidents !== false && raw.receiveIncidents !== "false", receiveMaintenance: raw.receiveMaintenance !== false && raw.receiveMaintenance !== "false" });
+    if (!allowSubscriptionRequest(requestClientKey(request, "subscribe"))) {
+      return NextResponse.json({ ok: false, message: "Too many requests. Please try again later." }, { status: 429, headers: { "retry-after": "900" } });
+    }
     await requestEmailSubscription(parsed);
     return NextResponse.json({ ok: true, message: "If the address can receive mail, a confirmation has been queued." }, { status: 202 });
   } catch (error) {
