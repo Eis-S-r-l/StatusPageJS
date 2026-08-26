@@ -35,6 +35,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://eis_status:${POSTGRES_PASSWORD:-change-this-password}@database:5432/eis_status
+    ports:
+      - "127.0.0.1:3000:3000"
     volumes:
       - branding_data:/app/data/branding
     depends_on:
@@ -54,23 +56,6 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  proxy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      STATUS_DOMAIN: ${STATUS_DOMAIN:-localhost}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - web
-
 volumes:
   postgres_data:
-  caddy_data:
-  caddy_config:
   branding_data:

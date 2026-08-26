@@ -36,7 +36,7 @@ Telegram and Webex are external notification integrations, not application infra
 
 The VM will run the following components, preferably through Docker Compose:
 
-1. A reverse proxy such as Caddy or Nginx for HTTPS and routing.
+1. The VM's existing Nginx instance for HTTPS and routing, using the example virtual host supplied in the repository.
 2. The Next.js web process.
 3. A background process built from the same application image.
 4. PostgreSQL.
@@ -476,7 +476,7 @@ Estimated delivery is seven to nine weeks for one experienced engineer, or appro
 
 ## 16. Implementation status
 
-The initial working monolith is now in place. It includes the Next.js public and admin views, PostgreSQL schema and migrations, Cognito login flow, category/service/event administration, mutation-triggered persisted uptime calculations, a rolling refresh worker, bilingual public pages and detail timelines, configurable light/dark themes and branding, email double opt-in, Telegram and Webex command onboarding, database-backed notification delivery with retries, Docker Compose, Caddy, and VM setup documentation.
+The initial working monolith is now in place. It includes the Next.js public and admin views, PostgreSQL schema and migrations, Cognito login flow, category/service/event administration, mutation-triggered persisted uptime calculations, a rolling refresh worker, bilingual public pages and detail timelines, configurable light/dark themes and branding, email double opt-in, Telegram and Webex command onboarding, database-backed notification delivery with retries, Docker Compose, an example Nginx virtual host, and VM setup documentation.
 
 The next implementation phase should focus on:
 
