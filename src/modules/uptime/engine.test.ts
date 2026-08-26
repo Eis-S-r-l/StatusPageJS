@@ -66,6 +66,16 @@ describe("calculateUptime", () => {
     expect(result.mergedDowntimeIntervals[0]?.end).toEqual(now);
   });
 
+  it("ignores unresolved downtime whose start is still in the future", () => {
+    const result = calculate([
+      { start: date("2026-08-26T14:00:00Z"), end: null },
+    ]);
+
+    expect(result.downtimeSeconds).toBe(0);
+    expect(result.uptimePercentage).toBe(100);
+    expect(result.mergedDowntimeIntervals).toHaveLength(0);
+  });
+
   it("uses monitoring start when it is later than the configured start", () => {
     const result = calculate(
       [

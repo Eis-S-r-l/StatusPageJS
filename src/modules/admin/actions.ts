@@ -52,6 +52,13 @@ function message(error: unknown): string {
   return "The change could not be saved. Please try again.";
 }
 
+function logFollowUpFailure(operation: string, error: unknown): void {
+  console.error(
+    `${operation} follow-up failed`,
+    error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error",
+  );
+}
+
 function finish(path: string, error?: unknown): never {
   revalidatePath("/admin");
   revalidatePath(path);
@@ -135,7 +142,10 @@ export async function createIncident(form: FormData) {
     saved = true;
     await recalculateAffectedServices(serviceIds);
     if (input.publish) await enqueueEventNotifications({ kind: "incident", sourceId: id, serviceIds, titleEn: input.titleEn, titleIt: input.titleIt, descriptionEn: input.descriptionEn, descriptionIt: input.descriptionIt });
-  } catch (error) { finish(path, saved ? new SafeActionError("The incident was saved, but a follow-up uptime or notification job failed. Retry the refresh before relying on the public metric.") : error); }
+  } catch (error) {
+    if (saved) logFollowUpFailure("Incident creation", error);
+    finish(path, saved ? new SafeActionError("The incident was saved, but a follow-up uptime or notification job failed. Retry the refresh before relying on the public metric.") : error);
+  }
   finish(path);
 }
 

@@ -59,10 +59,14 @@ export function calculateUptime(input: CalculateUptimeInput): UptimeResult {
       if (interval.end) assertValidDate(interval.end, `downtime[${index}].end`);
 
       const rawStart = interval.start.getTime();
-      const rawEnd = interval.end?.getTime() ?? windowEndMs;
-      if (rawEnd < rawStart) {
+      const explicitEnd = interval.end?.getTime();
+      if (explicitEnd !== undefined && explicitEnd < rawStart) {
         throw new RangeError(`downtime[${index}] ends before it starts`);
       }
+      // An unresolved incident may have been entered with a future start. It
+      // has no overlap with the current window yet and must not be mistaken
+      // for an explicitly inverted interval.
+      const rawEnd = explicitEnd ?? windowEndMs;
 
       return {
         startMs: Math.max(rawStart, windowStartMs),
