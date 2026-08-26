@@ -1,0 +1,204 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  buildStatusSnapshot,
+  type StatusReadModel,
+} from "./db-repository";
+
+const date = (value: string) => new Date(value);
+const now = date("2026-08-26T12:00:00Z");
+
+function baseModel(): StatusReadModel {
+  return {
+    now,
+    uptimeIntervalDays: 45,
+    categories: [
+      {
+        id: "category-id",
+        slug: "core",
+        nameEn: "Core",
+        nameIt: "Principali",
+        updatedAt: date("2026-08-20T10:00:00Z"),
+      },
+    ],
+    services: [
+      {
+        id: "service-a-id",
+        slug: "service-a",
+        categoryId: "category-id",
+        nameEn: "Service A",
+        nameIt: "Servizio A",
+        descriptionEn: "First service",
+        descriptionIt: "Primo servizio",
+        updatedAt: date("2026-08-20T11:00:00Z"),
+        uptimePercentage: "99.987654000000",
+        uptimeStatus: "available",
+        metricCalculatedAt: date("2026-08-26T11:55:00Z"),
+      },
+      {
+        id: "service-b-id",
+        slug: "service-b",
+        categoryId: "category-id",
+        nameEn: "Service B",
+        nameIt: "Servizio B",
+        descriptionEn: "Second service",
+        descriptionIt: "Secondo servizio",
+        updatedAt: date("2026-08-20T11:00:00Z"),
+        uptimePercentage: null,
+        uptimeStatus: "unavailable",
+        metricCalculatedAt: null,
+      },
+    ],
+    incidents: [],
+    maintenances: [],
+    incidentAssociations: [],
+    maintenanceAssociations: [],
+  };
+}
+
+describe("buildStatusSnapshot", () => {
+  it("uses persisted uptime and maps UUID associations to public slugs", () => {
+    const model = baseModel();
+    model.incidents.push({
+      id: "incident-id",
+      slug: "current-incident",
+      titleEn: "Current incident",
+      titleIt: "Incidente corrente",
+      descriptionEn: "Details",
+      descriptionIt: "Dettagli",
+      status: "monitoring",
+      startedAt: date("2026-08-26T10:00:00Z"),
+      resolvedAt: null,
+      publishedAt: date("2026-08-26T10:05:00Z"),
+      updatedAt: date("2026-08-26T10:30:00Z"),
+    });
+    model.incidentAssociations.push({
+      eventId: "incident-id",
+      serviceId: "service-a-id",
+      affectsUptime: true,
+    });
+
+    const snapshot = buildStatusSnapshot(model);
+    const [first, second] = snapshot.categories[0]!.services;
+
+    expect(first?.uptimePercentage).toBe("99.988%");
+    expect(second?.uptimePercentage).toBe("N/A");
+    expect(first?.state).toBe("outage");
+    expect(first?.history).toHaveLength(60);
+    expect(snapshot.overallState).toBe("outage");
+    expect(snapshot.activeIncidents[0]?.affectedServiceIds).toEqual([
+      "service-a",
+    ]);
+    expect(snapshot.lastUpdatedAt).toBe("2026-08-26T11:55:00.000Z");
+    expect(snapshot.uptimeIntervalDays).toBe(45);
+  });
+
+  it("applies outage, degradation, and maintenance state precedence", () => {
+    const model = baseModel();
+    model.incidents.push(
+      {
+        id: "degraded-id",
+        slug: "degraded",
+        titleEn: "Degraded",
+        titleIt: "Degradato",
+        descriptionEn: "",
+        descriptionIt: "",
+        status: "investigating",
+        startedAt: date("2026-08-26T09:00:00Z"),
+        resolvedAt: null,
+        publishedAt: date("2026-08-26T09:00:00Z"),
+        updatedAt: date("2026-08-26T09:00:00Z"),
+      },
+      {
+        id: "outage-id",
+        slug: "outage",
+        titleEn: "Outage",
+        titleIt: "Disservizio",
+        descriptionEn: "",
+        descriptionIt: "",
+        status: "identified",
+        startedAt: date("2026-08-26T10:00:00Z"),
+        resolvedAt: null,
+        publishedAt: date("2026-08-26T10:00:00Z"),
+        updatedAt: date("2026-08-26T10:00:00Z"),
+      },
+    );
+    model.incidentAssociations.push(
+      { eventId: "degraded-id", serviceId: "service-a-id", affectsUptime: false },
+      { eventId: "outage-id", serviceId: "service-a-id", affectsUptime: true },
+    );
+    model.maintenances.push({
+      id: "maintenance-id",
+      slug: "maintenance",
+      titleEn: "Maintenance",
+      titleIt: "Manutenzione",
+      descriptionEn: "Work",
+      descriptionIt: "Lavori",
+      status: "in_progress",
+      scheduledStartAt: date("2026-08-26T11:00:00Z"),
+      scheduledEndAt: date("2026-08-26T13:00:00Z"),
+      actualStartAt: date("2026-08-26T11:05:00Z"),
+      actualEndAt: null,
+      publishedAt: date("2026-08-25T10:00:00Z"),
+      updatedAt: date("2026-08-26T11:05:00Z"),
+    });
+    model.maintenanceAssociations.push({
+      eventId: "maintenance-id",
+      serviceId: "service-b-id",
+      affectsUptime: false,
+    });
+
+    const snapshot = buildStatusSnapshot(model);
+
+    expect(snapshot.categories[0]?.services.map((service) => service.state)).toEqual([
+      "outage",
+      "maintenance",
+    ]);
+    expect(snapshot.overallState).toBe("outage");
+    expect(snapshot.upcomingMaintenance[0]?.affectedServiceIds).toEqual([
+      "service-b",
+    ]);
+  });
+
+  it("separates active, upcoming, and recent events", () => {
+    const model = baseModel();
+    model.incidents.push({
+      id: "resolved-id",
+      slug: "resolved",
+      titleEn: "Resolved",
+      titleIt: "Risolto",
+      descriptionEn: "",
+      descriptionIt: "",
+      status: "resolved",
+      startedAt: date("2026-08-24T10:00:00Z"),
+      resolvedAt: date("2026-08-24T11:00:00Z"),
+      publishedAt: date("2026-08-24T10:00:00Z"),
+      updatedAt: date("2026-08-24T11:00:00Z"),
+    });
+    model.maintenances.push({
+      id: "scheduled-id",
+      slug: "scheduled",
+      titleEn: "Scheduled",
+      titleIt: "Programmata",
+      descriptionEn: "",
+      descriptionIt: "",
+      status: "scheduled",
+      scheduledStartAt: date("2026-08-27T10:00:00Z"),
+      scheduledEndAt: date("2026-08-27T11:00:00Z"),
+      actualStartAt: null,
+      actualEndAt: null,
+      publishedAt: date("2026-08-20T10:00:00Z"),
+      updatedAt: date("2026-08-20T10:00:00Z"),
+    });
+
+    const snapshot = buildStatusSnapshot(model);
+
+    expect(snapshot.activeIncidents).toHaveLength(0);
+    expect(snapshot.upcomingMaintenance.map((event) => event.slug)).toEqual([
+      "scheduled",
+    ]);
+    expect(snapshot.recentEvents.map((event) => event.slug)).toEqual([
+      "resolved",
+    ]);
+  });
+});

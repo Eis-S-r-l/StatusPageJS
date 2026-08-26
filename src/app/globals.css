@@ -1,0 +1,50 @@
+:root, html[data-theme="light"] {
+  color-scheme: light;
+  --color-background: var(--theme-light-background, #f8faf8);
+  --color-surface: var(--theme-light-surface, #ffffff);
+  --color-text: var(--theme-light-text, #14221d);
+  --color-muted: var(--theme-light-muted, #66756e);
+  --color-primary: var(--theme-light-primary, #087f5b);
+  --color-primary-text: var(--theme-light-primaryText, #ffffff);
+  --color-border: var(--theme-light-border, #dfe7e2);
+  --color-success: var(--theme-light-success, #15946c);
+  --color-warning: var(--theme-light-warning, #d49b28);
+  --color-danger: var(--theme-light-danger, #c85148);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-background: var(--theme-dark-background, #0d1512);
+  --color-surface: var(--theme-dark-surface, #15201b);
+  --color-text: var(--theme-dark-text, #eef6f1);
+  --color-muted: var(--theme-dark-muted, #9caea5);
+  --color-primary: var(--theme-dark-primary, #45c795);
+  --color-primary-text: var(--theme-dark-primaryText, #07110d);
+  --color-border: var(--theme-dark-border, #2a3a33);
+  --color-success: var(--theme-dark-success, #45c795);
+  --color-warning: var(--theme-dark-warning, #e1ad45);
+  --color-danger: var(--theme-dark-danger, #ef7770);
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--color-background); color: var(--color-text); }
+
+body {
+  margin: 0;
+  font-family: var(--font-body), Arial, sans-serif;
+  background:
+    radial-gradient(circle at 85% 4%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 27rem),
+    var(--color-background);
+  color: var(--color-text);
+}
+
+body, button, input, textarea, select { transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease; }
+
+button, a { font: inherit; }
+
+main { min-height: 100vh; }
+
+@media (prefers-reduced-motion: reduce) {
+  body, button, input, textarea, select { transition: none; }
+}

@@ -1,0 +1,52 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Script from "next/script";
+import type { ReactNode } from "react";
+import { fontClassName } from "@/app/fonts";
+import { brandingAssetUrl, loadPublicAppearance } from "@/modules/appearance/server";
+import { appearanceStyle, bootThemeScript } from "@/modules/appearance/theme";
+import { isLocale, locales } from "@/modules/i18n/config";
+import { getDictionary } from "@/modules/i18n/dictionaries";
+import "../globals.css";
+
+export const dynamicParams = false;
+export const dynamic = "force-dynamic";
+export function generateStaticParams() { return locales.map((locale) => ({ locale })); }
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isLocale(locale)) return {};
+  const t = getDictionary(locale);
+  const appearance = await loadPublicAppearance();
+  const favicon = brandingAssetUrl("favicon", appearance);
+  return {
+    metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
+    title: t.metadata.title,
+    description: t.metadata.description,
+    icons: favicon ? { icon: favicon } : undefined,
+    openGraph: {
+      title: t.metadata.title,
+      description: t.metadata.description,
+      locale: locale === "it" ? "it_IT" : "en_US",
+      images: [{ url: "/og.png", width: 1731, height: 909, alt: "EIS Service Status" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t.metadata.title,
+      description: t.metadata.description,
+      images: ["/og.png"],
+    },
+  };
+}
+
+export default async function LocaleLayout({ children, params }: { children: ReactNode; params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+  const appearance = await loadPublicAppearance();
+  return (
+    <html lang={locale} className={fontClassName} style={appearanceStyle(appearance)} suppressHydrationWarning>
+      <head><Script id="eis-theme-boot" strategy="beforeInteractive">{bootThemeScript}</Script></head>
+      <body>{children}</body>
+    </html>
+  );
+}

@@ -1,0 +1,25 @@
+import type { Locale } from "./config";
+
+const dictionaries = {
+  en: {
+    metadata: { title: "EIS Service Status", description: "Availability and operational updates for EIS services." }, brand: "EIS Service Status", skip: "Skip to main content", subscribe: "Subscribe to updates", language: "Italiano",
+    liveHealth: "Current service health", overview: "Service status", overall: { operational: "All systems operational", degraded: "Some services are experiencing issues", outage: "Service disruption in progress", maintenance: "Planned maintenance in progress" }, intro: "Current availability and the latest operational updates for EIS services.", lastUpdated: "Last updated", live: "Current",
+    servicesEyebrow: "Platform services", servicesTitle: "Service availability", last60Days: "Last 60 days", uptime: "uptime", uptimePeriod: "Uptime period", days: "days", daysAgo: "60 days ago", today: "Today",
+    status: { operational: "Operational", degraded: "Degraded performance", outage: "Major outage", maintenance: "Under maintenance" }, historyLegend: "Availability history legend", availability: { operational: "Operational day", degraded: "Degraded day", outage: "Outage day", maintenance: "Maintenance day" },
+    activeEyebrow: "Needs attention", activeTitle: "Active incidents", noActive: "No active incidents", noActiveBody: "There are no unresolved incidents at this time.", maintenanceEyebrow: "Planned work", maintenanceTitle: "Upcoming maintenance", noMaintenance: "No maintenance scheduled", recentEyebrow: "Past events", recentTitle: "Recent history", viewDetails: "View details", scheduledFor: "Scheduled for", affectedServices: "Affected services", update: "Update",
+    resolved: "Resolved", monitoring: "Monitoring", identified: "Identified", investigating: "Investigating", scheduled: "Scheduled", inProgress: "In progress", completed: "Completed", cancelled: "Cancelled", started: "Started", ended: "Ended", duration: "Duration", incident: "Incident", maintenance: "Maintenance", timeline: "Event timeline", back: "Back to service status",
+    disclosure: "Uptime percentages are calculated from incidents and maintenance manually recorded by EIS, not from automated monitoring.", footerNote: "Service status information from EIS.", subscribeTitle: "Stay informed", subscribeBody: "Receive a message when EIS publishes an incident or planned maintenance update.",
+  },
+  it: {
+    metadata: { title: "Stato dei servizi EIS", description: "Disponibilità e aggiornamenti operativi sui servizi EIS." }, brand: "Stato dei servizi EIS", skip: "Vai al contenuto principale", subscribe: "Iscriviti agli aggiornamenti", language: "English",
+    liveHealth: "Stato attuale dei servizi", overview: "Stato dei servizi", overall: { operational: "Tutti i sistemi sono operativi", degraded: "Alcuni servizi presentano problemi", outage: "È in corso un'interruzione del servizio", maintenance: "Manutenzione pianificata in corso" }, intro: "Disponibilità attuale e ultimi aggiornamenti operativi sui servizi EIS.", lastUpdated: "Ultimo aggiornamento", live: "Attuale",
+    servicesEyebrow: "Servizi della piattaforma", servicesTitle: "Disponibilità dei servizi", last60Days: "Ultimi 60 giorni", uptime: "disponibilità", uptimePeriod: "Periodo disponibilità", days: "giorni", daysAgo: "60 giorni fa", today: "Oggi",
+    status: { operational: "Operativo", degraded: "Prestazioni ridotte", outage: "Interruzione grave", maintenance: "In manutenzione" }, historyLegend: "Legenda dello storico disponibilità", availability: { operational: "Giorno operativo", degraded: "Giorno con prestazioni ridotte", outage: "Giorno con interruzione", maintenance: "Giorno di manutenzione" },
+    activeEyebrow: "Richiede attenzione", activeTitle: "Incidenti attivi", noActive: "Nessun incidente attivo", noActiveBody: "Al momento non ci sono incidenti irrisolti.", maintenanceEyebrow: "Attività pianificate", maintenanceTitle: "Manutenzioni programmate", noMaintenance: "Nessuna manutenzione programmata", recentEyebrow: "Eventi passati", recentTitle: "Cronologia recente", viewDetails: "Vedi dettagli", scheduledFor: "Programmato per", affectedServices: "Servizi interessati", update: "Aggiornamento",
+    resolved: "Risolto", monitoring: "Monitoraggio", identified: "Identificato", investigating: "In analisi", scheduled: "Programmato", inProgress: "In corso", completed: "Completato", cancelled: "Annullato", started: "Inizio", ended: "Fine", duration: "Durata", incident: "Incidente", maintenance: "Manutenzione", timeline: "Cronologia dell'evento", back: "Torna allo stato dei servizi",
+    disclosure: "Le percentuali di disponibilità sono calcolate sugli incidenti e sulle manutenzioni registrati manualmente da EIS, non tramite monitoraggio automatico.", footerNote: "Informazioni sullo stato dei servizi EIS.", subscribeTitle: "Rimani aggiornato", subscribeBody: "Ricevi un messaggio quando EIS pubblica un incidente o un aggiornamento sulla manutenzione pianificata.",
+  },
+} as const;
+
+export type Dictionary = (typeof dictionaries)[Locale];
+export function getDictionary(locale: Locale): Dictionary { return dictionaries[locale]; }

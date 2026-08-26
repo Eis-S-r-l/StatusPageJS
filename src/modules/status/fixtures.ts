@@ -1,0 +1,27 @@
+import type { DayState, PublicStatusSnapshot, ServiceCategory, StatusEvent } from "./types";
+function history(exceptions: Record<number, DayState> = {}): DayState[] { return Array.from({ length: 60 }, (_, index) => exceptions[index] ?? "operational"); }
+export const categoriesFixture: ServiceCategory[] = [
+  { id: "core", name: { en: "Core platform", it: "Piattaforma principale" }, services: [
+    { id: "customer-portal", name: { en: "Customer portal", it: "Portale clienti" }, description: { en: "Account access and self-service tools", it: "Accesso agli account e strumenti self-service" }, state: "operational", uptimePercentage: "99.982%", history: history({ 18: "degraded" }) },
+    { id: "public-api", name: { en: "Public API", it: "API pubblica" }, description: { en: "REST API and authentication", it: "API REST e autenticazione" }, state: "operational", uptimePercentage: "100%", history: history() },
+    { id: "payments", name: { en: "Payment processing", it: "Elaborazione pagamenti" }, description: { en: "Payment collection and settlement", it: "Riscossione e regolamento dei pagamenti" }, state: "degraded", uptimePercentage: "99.861%", history: history({ 12: "maintenance", 42: "degraded", 59: "degraded" }) },
+  ] },
+  { id: "communications", name: { en: "Communications", it: "Comunicazioni" }, services: [
+    { id: "notifications", name: { en: "Notifications", it: "Notifiche" }, description: { en: "Email and messaging delivery", it: "Invio di email e messaggi" }, state: "operational", uptimePercentage: "99.997%", history: history({ 27: "degraded" }) },
+  ] },
+];
+export const eventsFixture: StatusEvent[] = [
+  { kind: "incident", slug: "intermittent-payment-delays", title: { en: "Intermittent payment delays", it: "Ritardi intermittenti nei pagamenti" }, summary: { en: "Some payment confirmations are taking longer than usual.", it: "Alcune conferme di pagamento richiedono più tempo del previsto." }, state: "monitoring", startsAt: "2026-08-26T08:42:00Z", endsAt: null, affectedServiceIds: ["payments"], affectsUptime: true, timeline: [
+    { id: "payment-3", state: "monitoring", publishedAt: "2026-08-26T10:18:00Z", message: { en: "A fix has been applied and payment completion times are returning to normal. We are monitoring recovery.", it: "È stata applicata una correzione e i tempi di completamento dei pagamenti stanno tornando alla normalità. Stiamo monitorando il ripristino." } },
+    { id: "payment-2", state: "identified", publishedAt: "2026-08-26T09:25:00Z", message: { en: "We identified congestion in a payment processing queue and are applying a fix.", it: "Abbiamo individuato una congestione in una coda di elaborazione dei pagamenti e stiamo applicando una correzione." } },
+    { id: "payment-1", state: "investigating", publishedAt: "2026-08-26T08:49:00Z", message: { en: "We are investigating reports of delayed payment confirmations.", it: "Stiamo analizzando segnalazioni di ritardi nelle conferme di pagamento." } },
+  ] },
+  { kind: "maintenance", slug: "database-capacity-upgrade", title: { en: "Database capacity upgrade", it: "Aggiornamento della capacità del database" }, summary: { en: "We will expand database capacity. Brief API interruptions may occur.", it: "Aumenteremo la capacità del database. Potrebbero verificarsi brevi interruzioni delle API." }, state: "scheduled", startsAt: "2026-09-02T20:00:00Z", endsAt: "2026-09-02T21:30:00Z", affectedServiceIds: ["customer-portal", "public-api"], affectsUptime: false, timeline: [
+    { id: "database-1", state: "scheduled", publishedAt: "2026-08-25T14:00:00Z", message: { en: "Maintenance is scheduled for 2 September. No action is required from customers.", it: "La manutenzione è programmata per il 2 settembre. Non è richiesta alcuna azione ai clienti." } },
+  ] },
+  { kind: "incident", slug: "notification-delivery-delays", title: { en: "Notification delivery delays", it: "Ritardi nell'invio delle notifiche" }, summary: { en: "Email notifications were delayed for 24 minutes. All queued messages were delivered.", it: "Le notifiche email hanno subito ritardi per 24 minuti. Tutti i messaggi in coda sono stati consegnati." }, state: "resolved", startsAt: "2026-07-30T12:06:00Z", endsAt: "2026-07-30T12:30:00Z", affectedServiceIds: ["notifications"], affectsUptime: true, timeline: [
+    { id: "notification-2", state: "resolved", publishedAt: "2026-07-30T12:36:00Z", message: { en: "Delivery has returned to normal and queued notifications have been sent.", it: "L'invio è tornato alla normalità e le notifiche in coda sono state consegnate." } },
+    { id: "notification-1", state: "investigating", publishedAt: "2026-07-30T12:11:00Z", message: { en: "We are investigating delayed email notifications.", it: "Stiamo analizzando ritardi nelle notifiche email." } },
+  ] },
+];
+export const snapshotFixture: PublicStatusSnapshot = { overallState: "degraded", lastUpdatedAt: "2026-08-26T10:18:00Z", uptimeIntervalDays: 30, categories: categoriesFixture, activeIncidents: [eventsFixture[0]], upcomingMaintenance: [eventsFixture[1]], recentEvents: [eventsFixture[2]] };
