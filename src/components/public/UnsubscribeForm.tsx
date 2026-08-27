@@ -14,11 +14,12 @@ export function UnsubscribeForm({ locale }: { locale: Locale }) {
   const t = copy[locale];
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setState("sending");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const response = await fetch("/api/unsubscribe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: form.get("email"), language: locale }) });
       if (!response.ok) throw new Error("Request rejected");
-      event.currentTarget.reset(); setState("success");
+      formElement.reset(); setState("success");
     } catch { setState("error"); }
   }
   return <form className={styles.subscriptionForm} onSubmit={submit}><label className={styles.emailField}><span className={styles.visuallyHidden}>{t.email}</span><input name="email" type="email" autoComplete="email" placeholder={t.email} maxLength={320} required /></label><button type="submit" disabled={state === "sending"}>{state === "sending" ? t.sending : t.submit}</button><p className={state === "error" ? styles.formError : styles.formMessage} role="status" aria-live="polite">{state === "success" ? t.success : state === "error" ? t.error : ""}</p></form>;

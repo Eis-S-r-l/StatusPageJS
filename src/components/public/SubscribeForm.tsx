@@ -42,7 +42,8 @@ export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { loc
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("submitting");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const response = await fetch("/api/subscribe", {
         method: "POST",
@@ -55,7 +56,7 @@ export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { loc
         }),
       });
       if (!response.ok) throw new Error("Subscription rejected");
-      event.currentTarget.reset();
+      formElement.reset();
       setState("success");
     } catch {
       setState("error");
