@@ -4,6 +4,7 @@ import { getDb, type Database, type DatabaseTransaction } from "../../db/client"
 import { notificationJobs, services, subscriptionCategories, subscriptionServices, subscriptions, systemSettings } from "../../db/schema";
 import { eventNotificationEmail } from "./email-templates";
 import { eventNotificationTelegramHtml } from "./telegram-message";
+import { eventNotificationWebexText } from "./webex-message";
 
 export interface EventNotification {
   kind: "incident" | "maintenance";
@@ -81,6 +82,7 @@ export async function enqueueEventNotifications(
         companyName: appearance?.companyName ?? "EIS", logoUrl,
       }),
       telegramHtml: eventNotificationTelegramHtml(messageInput),
+      webexText: eventNotificationWebexText(messageInput),
     };
     const type = event.notificationType ?? (event.kind === "incident" ? "incident" : "maintenance_announcement");
     return {

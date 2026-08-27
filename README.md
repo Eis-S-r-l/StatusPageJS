@@ -330,6 +330,8 @@ Replace `@EIS` with the displayed mention for the configured bot. A plain `subsc
 
 When a visitor subscribes, the application records the sender email supplied by the message and attempts to retrieve their Webex display name through the People API. Profile lookup failure does not block the subscription; the email remains searchable in the admin subscriber view. An existing Webex subscriber can send the appropriate subscribe command again to refresh these details. A group subscription belongs to the space, so notifications are posted to that shared space rather than privately to the person who entered the command.
 
+Webex incident and maintenance notifications do not link to the public email-unsubscription page. They instruct direct-chat subscribers to send `unsubscribe` to the bot, and group-space subscribers to mention the bot and write `unsubscribe`. Both commands remove the subscription associated with that direct chat or shared space.
+
 ### Test and troubleshoot delivery
 
 The subscription reply is sent by the `web` container, while incident and maintenance notifications are sent asynchronously by the `worker` container. Receiving the subscription reply therefore does not prove that the worker has the Webex token. After changing `.env`, always recreate both containers as shown above.
