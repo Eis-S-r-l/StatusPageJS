@@ -1,0 +1,28 @@
+.badge {
+  --badge-color: var(--color-success);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 9px 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--badge-color) 46%, var(--color-border));
+  border-radius: 999px;
+  color: var(--color-service-status-text);
+  background: color-mix(in srgb, var(--badge-color) 13%, var(--color-surface));
+  font-size: .75rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--badge-color);
+  stroke-width: 2.25;
+}
+
+.degraded { --badge-color: var(--color-warning); }
+.outage { --badge-color: var(--color-danger); }
+.maintenance { --badge-color: var(--color-primary); }

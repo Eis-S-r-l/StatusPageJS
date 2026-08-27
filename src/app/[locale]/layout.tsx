@@ -19,21 +19,22 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   if (!isLocale(locale)) return {};
   const t = getDictionary(locale);
   const appearance = await loadPublicAppearance();
+  const title = appearance.statusPageTitle.trim() || t.metadata.title;
   const favicon = brandingAssetUrl("favicon", appearance);
   return {
     metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
-    title: t.metadata.title,
+    title,
     description: t.metadata.description,
     icons: favicon ? { icon: favicon } : undefined,
     openGraph: {
-      title: t.metadata.title,
+      title,
       description: t.metadata.description,
       locale: locale === "it" ? "it_IT" : "en_US",
-      images: [{ url: "/og.png", width: 1731, height: 909, alt: "EIS Service Status" }],
+      images: [{ url: "/og.png", width: 1731, height: 909, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
-      title: t.metadata.title,
+      title,
       description: t.metadata.description,
       images: ["/og.png"],
     },

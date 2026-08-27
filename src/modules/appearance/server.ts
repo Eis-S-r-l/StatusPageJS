@@ -11,6 +11,7 @@ export type BrandingAssetKind = "logo-light" | "logo-dark" | "favicon";
 
 export interface PublicAppearance {
   companyName: string;
+  statusPageTitle: string;
   lightPalette: ThemePalette;
   darkPalette: ThemePalette;
   logoLightFile: string | null;
@@ -24,6 +25,7 @@ export interface PublicAppearance {
 
 export const DEFAULT_APPEARANCE: PublicAppearance = {
   companyName: "EIS",
+  statusPageTitle: "EIS Service Status",
   lightPalette: DEFAULT_LIGHT_PALETTE,
   darkPalette: DEFAULT_DARK_PALETTE,
   logoLightFile: null,
@@ -40,6 +42,7 @@ export async function loadPublicAppearance(): Promise<PublicAppearance> {
   try {
     const [row] = await getDb().select({
       companyName: systemSettings.companyName,
+      statusPageTitle: systemSettings.statusPageTitle,
       lightPalette: systemSettings.lightPalette,
       darkPalette: systemSettings.darkPalette,
       logoLightFile: systemSettings.logoLightFile,

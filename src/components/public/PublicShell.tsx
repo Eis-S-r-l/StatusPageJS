@@ -15,7 +15,7 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
   const appearance = await loadPublicAppearance();
   const lightLogo = brandingAssetUrl("logo-light", appearance) ?? brandingAssetUrl("logo-dark", appearance);
   const darkLogo = brandingAssetUrl("logo-dark", appearance) ?? lightLogo;
-  const brandLabel = locale === "it" ? `Stato dei servizi ${appearance.companyName}` : `${appearance.companyName} Service Status`;
+  const brandLabel = appearance.statusPageTitle.trim() || (locale === "it" ? `Stato dei servizi ${appearance.companyName}` : `${appearance.companyName} Service Status`);
   return (
     <div className={styles.page} lang={locale}>
       <a className={styles.skipLink} href="#main-content">{t.skip}</a>
@@ -25,7 +25,6 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
             <Image className={`${styles.brandLogo} ${styles.brandLogoLight}`} src={lightLogo} width={180} height={42} unoptimized alt="" aria-hidden="true" />
             <Image className={`${styles.brandLogo} ${styles.brandLogoDark}`} src={darkLogo} width={180} height={42} unoptimized alt="" aria-hidden="true" />
           </> : <span className={styles.brandMark} aria-hidden="true">{appearance.companyName.slice(0, 1).toUpperCase()}</span>}
-          <span>{brandLabel}</span>
         </Link>
         <nav className={styles.actions} aria-label={locale === "en" ? "Page actions" : "Azioni della pagina"}>
           <ThemeToggle className={styles.themeToggle} labelLight={locale === "it" ? "Usa tema chiaro" : "Use light mode"} labelDark={locale === "it" ? "Usa tema scuro" : "Use dark mode"} />

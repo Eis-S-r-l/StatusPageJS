@@ -507,8 +507,8 @@ export async function updateSettings(form: FormData) {
   const path = "/admin/settings";
   let saved = false;
   try {
-    const input = z.object({ companyName: requiredText, publicTimezone: requiredText, uptimeIntervalDays: z.coerce.number().int().min(1).max(3650), plannedMaintenanceAffectsUptime: z.string().optional() }).parse(values(form));
-    await getDb().insert(systemSettings).values({ id: 1, companyName: input.companyName, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime) }).onConflictDoUpdate({ target: systemSettings.id, set: { companyName: input.companyName, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime), updatedAt: new Date() } });
+    const input = z.object({ companyName: requiredText, statusPageTitle: z.string().trim().min(1, "Enter a status page title.").max(200), publicTimezone: requiredText, uptimeIntervalDays: z.coerce.number().int().min(1).max(3650), plannedMaintenanceAffectsUptime: z.string().optional() }).parse(values(form));
+    await getDb().insert(systemSettings).values({ id: 1, companyName: input.companyName, statusPageTitle: input.statusPageTitle, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime) }).onConflictDoUpdate({ target: systemSettings.id, set: { companyName: input.companyName, statusPageTitle: input.statusPageTitle, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime), updatedAt: new Date() } });
     saved = true;
     await recalculateUptimeForAllServices();
     await audit(admin.subject, "update", "settings", "1", input);

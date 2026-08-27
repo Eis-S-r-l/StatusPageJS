@@ -8,16 +8,36 @@ import { SubscribeForm } from "./SubscribeForm";
 import { turnstileSiteKey } from "@/modules/subscriptions/turnstile-config";
 import { sortLocalizedByOrder } from "@/modules/status/ordering";
 import { EventCard } from "./EventCard";
+import { ServiceCategories, type ServiceCategoryContent } from "./ServiceCategories";
+import { ServiceStatusBadge } from "./ServiceStatusBadge";
 import styles from "./public.module.css";
 
-export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSnapshot; locale: Locale }) {
+export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds }: { snapshot: PublicStatusSnapshot; locale: Locale; title: string; collapsedCategoryIds: string[] }) {
   const t = getDictionary(locale);
   const overall = snapshot.overallState;
+  const categoryContent: ServiceCategoryContent[] = sortLocalizedByOrder(snapshot.categories, locale).map((category) => ({
+    id: category.id,
+    name: category.name[locale],
+    content: <div className={styles.serviceList}>
+      {sortLocalizedByOrder(category.services, locale).map((service) => (
+        <article className={styles.service} key={service.id}>
+          <div className={styles.serviceMeta}>
+            <div><h4>{service.name[locale]}</h4><p>{service.description[locale]}</p><ServiceStatusBadge state={service.state} label={t.status[service.state]} /></div>
+            <div className={styles.uptime}><strong>{service.uptimePercentage}</strong><span>{t.uptime}</span></div>
+          </div>
+          <div className={styles.history} role="img" aria-label={`${service.name[locale]}: ${t.last60Days}, ${service.uptimePercentage} ${t.uptime}`}>
+            {service.history.map((state, index) => <i className={styles[state]} key={`${service.id}-${index}`} title={t.availability[state]} />)}
+          </div>
+          <div className={styles.historyLabels} aria-hidden="true"><span>{t.daysAgo}</span><span>{t.today}</span></div>
+        </article>
+      ))}
+    </div>,
+  }));
   return (
     <main id="main-content">
       <section className={styles.hero} aria-labelledby="page-title">
         <p className={styles.eyebrow}>{t.liveHealth}</p>
-        <h1 id="page-title">{t.overview}</h1>
+        <h1 id="page-title">{title}</h1>
         <p className={styles.intro}>{t.intro}</p>
         <div className={`${styles.statusBanner} ${styles[overall]}`} role="status">
           <span className={styles.statusIcon} aria-hidden="true">{overall === "operational" ? <Check /> : <AlertTriangle />}</span>
@@ -31,25 +51,7 @@ export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSn
         <div className={styles.legend} aria-label={t.historyLegend}>
           {(["operational", "degraded", "outage", "maintenance"] as const).map((state) => <span key={state}><i className={styles[state]} />{t.availability[state]}</span>)}
         </div>
-        {sortLocalizedByOrder(snapshot.categories, locale).map((category) => (
-          <div className={styles.category} key={category.id}>
-            <h3>{category.name[locale]}</h3>
-            <div className={styles.serviceList}>
-              {sortLocalizedByOrder(category.services, locale).map((service) => (
-                <article className={styles.service} key={service.id}>
-                  <div className={styles.serviceMeta}>
-                    <div><h4>{service.name[locale]}</h4><p>{service.description[locale]}</p><span className={`${styles.serviceState} ${styles[service.state]}`}><i />{t.status[service.state]}</span></div>
-                    <div className={styles.uptime}><strong>{service.uptimePercentage}</strong><span>{t.uptime}</span></div>
-                  </div>
-                  <div className={styles.history} role="img" aria-label={`${service.name[locale]}: ${t.last60Days}, ${service.uptimePercentage} ${t.uptime}`}>
-                    {service.history.map((state, index) => <i className={styles[state]} key={`${service.id}-${index}`} title={t.availability[state]} />)}
-                  </div>
-                  <div className={styles.historyLabels} aria-hidden="true"><span>{t.daysAgo}</span><span>{t.today}</span></div>
-                </article>
-              ))}
-            </div>
-          </div>
-        ))}
+        <ServiceCategories categoryContent={categoryContent} collapsedCategoryIds={collapsedCategoryIds} labels={{ expandCategory: t.expandCategory, collapseCategory: t.collapseCategory }} />
       </section>
 
       <section className={styles.section} aria-labelledby="active-title">

@@ -82,7 +82,7 @@ export const loadMaintenances = () => safely(async () => {
 
 export const loadSettings = () => safely(async () => {
   const [row] = await getDb().select().from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
-  return row ?? { id: 1, uptimeIntervalDays: 30, plannedMaintenanceAffectsUptime: false, publicTimezone: "Europe/Rome", companyName: "EIS" };
+  return row ?? { id: 1, uptimeIntervalDays: 30, plannedMaintenanceAffectsUptime: false, publicTimezone: "Europe/Rome", companyName: "EIS", statusPageTitle: "EIS Service Status" };
 });
 
 export const loadAppearanceSettings = () => safely(async () => {
@@ -90,6 +90,7 @@ export const loadAppearanceSettings = () => safely(async () => {
   if (!row) return DEFAULT_APPEARANCE;
   return {
     companyName: row.companyName,
+    statusPageTitle: row.statusPageTitle,
     lightPalette: normalizePalette(row.lightPalette, DEFAULT_LIGHT_PALETTE),
     darkPalette: normalizePalette(row.darkPalette, DEFAULT_DARK_PALETTE),
     logoLightFile: row.logoLightFile,

@@ -1,0 +1,1 @@
+ALTER TABLE "system_settings" ADD COLUMN "status_page_title" text DEFAULT 'EIS Service Status' NOT NULL;

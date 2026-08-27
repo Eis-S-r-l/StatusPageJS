@@ -21,6 +21,7 @@ describe("theme persistence", () => {
   it("generates independent service-status text CSS variables for both themes", () => {
     const style = appearanceStyle({
       companyName: "EIS",
+      statusPageTitle: "EIS Service Status",
       lightPalette: { ...DEFAULT_LIGHT_PALETTE, serviceStatusText: "#112233" },
       darkPalette: { ...DEFAULT_DARK_PALETTE, serviceStatusText: "#ddeeff" },
       logoLightFile: null,
@@ -36,11 +37,11 @@ describe("theme persistence", () => {
   });
 
   it("keeps service-status label text independent from semantic markers", () => {
-    const css = readFileSync(new URL("../../components/public/public.module.css", import.meta.url), "utf8");
-    expect(css).toContain(".serviceState { display: inline-flex; align-items: center; gap: 6px; color: var(--color-service-status-text);");
-    expect(css).toContain(".serviceState i { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success);");
-    expect(css).toContain(".serviceState.degraded i { background: var(--color-warning); }");
-    expect(css).toContain(".serviceState.outage i { background: var(--color-danger); }");
-    expect(css).toContain(".serviceState.maintenance i { background: var(--color-primary); }");
+    const css = readFileSync(new URL("../../components/public/ServiceStatusBadge.module.css", import.meta.url), "utf8");
+    expect(css).toContain("color: var(--color-service-status-text);");
+    expect(css).toContain("--badge-color: var(--color-success);");
+    expect(css).toContain(".degraded { --badge-color: var(--color-warning); }");
+    expect(css).toContain(".outage { --badge-color: var(--color-danger); }");
+    expect(css).toContain(".maintenance { --badge-color: var(--color-primary); }");
   });
 });

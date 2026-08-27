@@ -33,6 +33,8 @@ The public application is available at `http://localhost:3000/en` and `http://lo
 
 Branding uploads are stored under `data/branding` in local development. The directory is created automatically and is excluded from Git.
 
+The public dashboard stores collapsed service-category preferences in the browser cookie `eis-collapsed-categories`. It contains only current category IDs, is limited in size, and expires after one year; deleting it restores all categories to their expanded state.
+
 ## VM deployment
 
 Copy `.env.example` to `.env`, replace every placeholder and default password, and set `APP_URL` to the public HTTPS URL. Then run:
@@ -368,7 +370,7 @@ Incident and maintenance notifications use the configured company name and dark-
 
 ## Appearance and branding
 
-Authenticated administrators can use `/admin/appearance` to:
+Authenticated administrators can use `/admin/settings` to set the persisted public status-page title, and `/admin/appearance` to:
 
 - Configure background, surface, text, accent, border, success, warning, error, and service-status text colors independently for light and dark mode. Service-status text is separate from its marker color: operational, degraded, outage, and maintenance markers remain success, warning, error, and primary respectively.
 - Configure the text color used on primary/accent controls.

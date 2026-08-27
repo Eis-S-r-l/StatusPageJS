@@ -43,18 +43,18 @@
 .legend span { display: flex; align-items: center; gap: 5px; }
 .legend i { width: 8px; height: 8px; border-radius: 2px; }
 .category { margin-bottom: 25px; }
-.category > h3 { margin: 0 0 10px; color: var(--color-muted); font-size: .79rem; letter-spacing: .07em; text-transform: uppercase; }
+.categoryHeading { margin: 0 0 10px; }
+.categoryToggle { width: 100%; min-height: 48px; padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border)); border-radius: 12px; color: var(--color-text); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); font: inherit; font-size: .9rem; font-weight: 800; letter-spacing: .03em; text-align: left; text-transform: uppercase; cursor: pointer; }
+.categoryToggle:hover { background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface)); }
+.categoryToggle:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-primary) 36%, transparent); outline-offset: 2px; }
+.categoryChevron, .categoryChevronCollapsed { width: 19px; height: 19px; flex: 0 0 auto; color: var(--color-primary); transition: transform .16s ease; }
+.categoryChevronCollapsed { transform: rotate(-90deg); }
 .serviceList { overflow: hidden; border: 1px solid var(--color-border); border-radius: 15px; background: var(--color-surface); box-shadow: 0 18px 60px color-mix(in srgb, var(--color-text) 6%, transparent); }
 .service { padding: 23px 24px; border-bottom: 1px solid var(--color-border); }
 .service:last-child { border-bottom: 0; }
 .serviceMeta { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
 .service h4 { margin: 0 0 4px; font-family: var(--font-display), sans-serif; font-size: 1.02rem; }
 .serviceMeta p { margin: 0 0 9px; color: var(--color-muted); font-size: .78rem; }
-.serviceState { display: inline-flex; align-items: center; gap: 6px; color: var(--color-service-status-text); font-size: .75rem; font-weight: 750; }
-.serviceState i { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); }
-.serviceState.degraded i { background: var(--color-warning); }
-.serviceState.outage i { background: var(--color-danger); }
-.serviceState.maintenance i { background: var(--color-primary); }
 .uptime { display: flex; flex-direction: column; align-items: end; white-space: nowrap; }
 .uptime strong { font-family: var(--font-display), sans-serif; font-size: 1rem; }
 .uptime span { color: var(--color-muted); font-size: .7rem; }
@@ -136,7 +136,7 @@
 .timeline p { margin: 7px 0 0; color: var(--color-muted); font-size: .86rem; line-height: 1.6; }
 @media (hover:hover) { .subscribe, .language, .themeToggle, .back, .eventFooter a { transition: transform .16s ease, opacity .16s ease; } .subscribe:hover, .themeToggle:hover, .back:hover, .eventFooter a:hover { transform: translateY(-1px); } .language:hover { opacity: .72; } }
 @media (max-width: 640px) {
-  .header { height: 70px; } .brand > span:last-child { display: none; } .brandLogo { max-width: 120px; max-height: 36px; } .language { font-size: 0; } .language svg { width: 20px; height: 20px; } .subscribe span { display: none; }
+  .header { height: 70px; } .brandLogo { max-width: 120px; max-height: 36px; } .language { font-size: 0; } .language svg { width: 20px; height: 20px; } .subscribe span { display: none; }
   .hero, .historyHero { padding-top: 52px; } .current { display: none; } .section { padding-block: 32px; } .sectionHeading { align-items: center; } .historyLinks { align-items: flex-end; flex-direction: column; gap: 5px; }
   .legend { gap: 8px 11px; } .service { padding: 20px 16px; } .history { gap: 2px; } .serviceMeta p { display: none; }
   .eventFooter { align-items: end; } .eventFooter > span { max-width: 62%; } .subscribePanel { margin-block: 32px 48px; padding: 24px; align-items: flex-start; flex-direction: column; }
@@ -144,4 +144,4 @@
   .footer { flex-direction: column; } .facts { grid-template-columns: 1fr; } .facts > div { border-right: 0; } .facts > div:nth-last-child(-n+2) { border-bottom: 1px solid var(--color-border); } .facts > div:last-child { border-bottom: 0; }
   .timelineMeta { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
-@media (prefers-reduced-motion: reduce) { .subscribe, .language, .themeToggle, .back, .eventFooter a { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .subscribe, .language, .themeToggle, .back, .eventFooter a, .categoryChevron, .categoryChevronCollapsed { transition: none; } }
