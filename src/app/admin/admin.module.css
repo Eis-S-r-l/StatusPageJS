@@ -24,6 +24,10 @@
 .stat strong { display: block; margin-top: 10px; font: 750 1.8rem var(--font-display), sans-serif; }
 .panel { margin-top: 18px; padding: 24px; }
 .panel h2 { font-size: 1.15rem; margin: 0 0 18px; }
+.panelTitle { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.panelTitle h2 { margin: 0; }
+.serviceGroups { display: grid; gap: 16px; }
+.serviceGroup h3 { margin: 0 0 8px; color: var(--color-muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 .form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .full { grid-column: 1 / -1; }
@@ -96,9 +100,11 @@
 .paletteHeading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
 .paletteHeading h2, .assetField h3 { margin: 0; }
 .paletteHeading p, .assetField p, .panelIntro { margin: 5px 0 0; color: var(--color-muted); font-size: .78rem; line-height: 1.5; }
-.palettePreview { width: 72px; height: 46px; flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 7px; border: 1px solid; border-radius: 9px; }
-.palettePreview span { width: 34px; height: 28px; border: 1px solid; border-radius: 5px; }
-.palettePreview i { width: 15px; height: 15px; border-radius: 50%; }
+.palettePreview { width: 114px; height: 46px; flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 7px; border: 1px solid; border-radius: 9px; }
+.palettePreview > span { width: 24px; height: 28px; border: 1px solid; border-radius: 5px; }
+.palettePreview > i { width: 10px; height: 10px; border-radius: 50%; }
+.palettePreview b { display: inline-flex; align-items: center; gap: 3px; font-size: .57rem; }
+.palettePreview b em { width: 5px; height: 5px; border-radius: 50%; }
 .colorGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .colorField { display: grid; gap: 6px; color: var(--color-muted); font-size: .74rem; font-weight: 650; }
 .colorField > div { display: flex; align-items: center; gap: 9px; }

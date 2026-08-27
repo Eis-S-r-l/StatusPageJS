@@ -138,6 +138,12 @@ export const incidents = pgTable(
     uniqueIndex("incidents_slug_unique").on(table.slug),
     index("incidents_started_at_idx").on(table.startedAt),
     index("incidents_public_idx").on(table.isPublished, table.archivedAt),
+    index("incidents_public_history_idx").on(
+      table.isPublished,
+      table.archivedAt,
+      table.startedAt,
+      table.id,
+    ),
     check(
       "incidents_resolved_after_start",
       sql`${table.resolvedAt} is null or ${table.resolvedAt} >= ${table.startedAt}`,
@@ -218,6 +224,12 @@ export const maintenances = pgTable(
     uniqueIndex("maintenances_slug_unique").on(table.slug),
     index("maintenances_scheduled_start_idx").on(table.scheduledStartAt),
     index("maintenances_public_idx").on(table.isPublished, table.archivedAt),
+    index("maintenances_public_history_idx").on(
+      table.isPublished,
+      table.archivedAt,
+      table.scheduledStartAt,
+      table.id,
+    ),
     check(
       "maintenances_schedule_order",
       sql`${table.scheduledEndAt} >= ${table.scheduledStartAt}`,

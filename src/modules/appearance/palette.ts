@@ -5,6 +5,7 @@ export const PALETTE_FIELDS = [
   "muted",
   "primary",
   "primaryText",
+  "serviceStatusText",
   "border",
   "success",
   "warning",
@@ -21,6 +22,7 @@ export const DEFAULT_LIGHT_PALETTE: ThemePalette = {
   muted: "#66756e",
   primary: "#087f5b",
   primaryText: "#ffffff",
+  serviceStatusText: "#087f5b",
   border: "#dfe7e2",
   success: "#15946c",
   warning: "#d49b28",
@@ -34,6 +36,7 @@ export const DEFAULT_DARK_PALETTE: ThemePalette = {
   muted: "#9caea5",
   primary: "#45c795",
   primaryText: "#07110d",
+  serviceStatusText: "#45c795",
   border: "#2a3a33",
   success: "#45c795",
   warning: "#e1ad45",
@@ -44,9 +47,12 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 export function normalizePalette(value: unknown, fallback: ThemePalette): ThemePalette {
   const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const primary = typeof input.primary === "string" && HEX_COLOR.test(input.primary) ? input.primary.toLowerCase() : fallback.primary;
   return Object.fromEntries(PALETTE_FIELDS.map((field) => [
     field,
-    typeof input[field] === "string" && HEX_COLOR.test(input[field]) ? input[field].toLowerCase() : fallback[field],
+    typeof input[field] === "string" && HEX_COLOR.test(input[field])
+      ? input[field].toLowerCase()
+      : field === "serviceStatusText" ? primary : fallback[field],
   ])) as ThemePalette;
 }
 

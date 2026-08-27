@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
 import { archiveEvent, createIncident, createMaintenance, editIncident, editMaintenance, updateIncident, updateMaintenance } from "@/modules/admin/actions";
 import { INITIAL_EVENT_ACTION_STATE, type EventActionState } from "@/modules/admin/event-validation";
 import { LocalDateTimeField, RichTextField } from "./_event-fields";
+import { DialogForm } from "./_dialog-form";
 import { AutoSlugFields } from "./_slug-fields";
 import styles from "./admin.module.css";
 
@@ -104,21 +105,6 @@ function IncidentUpdateForm({ item, onSuccess }: { item: IncidentItem; onSuccess
     {!item.isPublished && <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish incident</label>}
     <FormStatus state={state} /><button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Publishing…" : "Add timeline update"}</button>
   </form>;
-}
-
-function DialogForm({ button, title, children }: { button: string; title: string; children: (close: () => void) => React.ReactNode }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  const [formKey, setFormKey] = useState(0);
-  const [open, setOpen] = useState(false);
-  const close = () => { setOpen(false); setFormKey((current) => current + 1); };
-  useEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    if (open && !element.open) element.showModal();
-    if (!open && element.open) element.close();
-  }, [open]);
-  return <><button type="button" className={styles.secondaryButton} onClick={() => setOpen(true)}>{button}</button><dialog ref={dialog} className={styles.modal} aria-labelledby={titleId} onCancel={close}><div className={styles.modalCard}><div className={styles.modalHeader}><h2 id={titleId}>{title}</h2><button type="button" aria-label="Close" onClick={close}>×</button></div><div key={formKey}>{children(close)}</div></div></dialog></>;
 }
 
 function LocalTime({ value }: { value: string }) {

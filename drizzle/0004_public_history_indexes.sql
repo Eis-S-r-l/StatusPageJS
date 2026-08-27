@@ -1,0 +1,2 @@
+CREATE INDEX "incidents_public_history_idx" ON "incidents" USING btree ("is_published","archived_at","started_at","id");--> statement-breakpoint
+CREATE INDEX "maintenances_public_history_idx" ON "maintenances" USING btree ("is_published","archived_at","scheduled_start_at","id");

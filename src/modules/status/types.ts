@@ -3,9 +3,11 @@ export type LocalizedText = Record<Locale, string>;
 export type ServiceState = "operational" | "degraded" | "outage" | "maintenance";
 export type DayState = ServiceState;
 export type EventState = "investigating" | "identified" | "monitoring" | "resolved" | "scheduled" | "in_progress" | "completed" | "cancelled";
-export interface ServiceSummary { id: string; name: LocalizedText; description: LocalizedText; state: ServiceState; /** Persisted and maintained when uptime-affecting events change. */ uptimePercentage: string; history: DayState[]; }
-export interface ServiceCategory { id: string; name: LocalizedText; services: ServiceSummary[]; }
+export interface ServiceSummary { id: string; displayOrder: number; name: LocalizedText; description: LocalizedText; state: ServiceState; /** Persisted and maintained when uptime-affecting events change. */ uptimePercentage: string; history: DayState[]; }
+export interface ServiceCategory { id: string; displayOrder: number; name: LocalizedText; services: ServiceSummary[]; }
 export interface TimelineEntry { id: string; state: EventState; publishedAt: string; message: LocalizedText; }
-export interface StatusEvent { kind: "incident" | "maintenance"; slug: string; title: LocalizedText; summary: LocalizedText; state: EventState; startsAt: string; endsAt: string | null; affectedServiceIds: string[]; affectsUptime: boolean; timeline: TimelineEntry[]; }
+export interface AffectedService { id: string; name: LocalizedText; }
+export interface StatusEvent { kind: "incident" | "maintenance"; slug: string; title: LocalizedText; summary: LocalizedText; state: EventState; startsAt: string; endsAt: string | null; affectedServices: AffectedService[]; affectsUptime: boolean; timeline: TimelineEntry[]; }
+export interface PaginatedStatusEvents { events: StatusEvent[]; page: number; pageSize: number; totalItems: number; totalPages: number; }
 export interface PublicStatusSnapshot { overallState: ServiceState; lastUpdatedAt: string; uptimeIntervalDays: number; categories: ServiceCategory[]; activeIncidents: StatusEvent[]; upcomingMaintenance: StatusEvent[]; recentEvents: StatusEvent[]; }
-export interface PublicStatusRepository { getSnapshot(): Promise<PublicStatusSnapshot>; getIncident(slug: string): Promise<StatusEvent | null>; getMaintenance(slug: string): Promise<StatusEvent | null>; }
+export interface PublicStatusRepository { getSnapshot(): Promise<PublicStatusSnapshot>; getIncident(slug: string): Promise<StatusEvent | null>; getMaintenance(slug: string): Promise<StatusEvent | null>; listIncidents(page: number, pageSize: number): Promise<PaginatedStatusEvents>; listMaintenances(page: number, pageSize: number): Promise<PaginatedStatusEvents>; }

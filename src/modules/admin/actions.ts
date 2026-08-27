@@ -2,12 +2,13 @@
 
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getDb } from "@/db/client";
+import type { Database, DatabaseTransaction } from "@/db/client";
 import {
   auditLogs,
   categories,
@@ -24,6 +25,7 @@ import {
 import { requireAdmin } from "@/modules/auth/guard";
 import { affectedServiceUnion } from "@/modules/admin/affected-services";
 import { formValues, type EventActionState, optionalUtcDate, requiredUtcDate, validateIncidentTiming, validateMaintenanceTiming } from "@/modules/admin/event-validation";
+import { categoryAuditPayload, categoryInputSchema, monitoringStartChanged, serviceAuditPayload, serviceInputSchema, type ServiceAdminActionState } from "@/modules/admin/service-validation";
 import { richTextToPlainText, sanitizeRichText } from "@/modules/content/rich-text";
 import { enqueueEventNotifications } from "@/modules/notifications/enqueue";
 import { refreshTelegramProfile } from "@/modules/subscriptions/bot-service";
@@ -41,15 +43,6 @@ const EVENT_STATUS_LABELS = {
   completed: { statusEn: "Completed", statusIt: "Completata" },
   cancelled: { statusEn: "Cancelled", statusIt: "Annullata" },
 } as const;
-const date = z.string().min(1).transform((value, context) => {
-  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
-  const parsed = new Date(hasTimezone ? value : `${value}Z`);
-  if (!Number.isFinite(parsed.getTime())) {
-    context.addIssue({ code: "custom", message: "Invalid date" });
-    return z.NEVER;
-  }
-  return parsed;
-});
 class SafeActionError extends Error {}
 
 function eventServiceSelection(form: FormData) {
@@ -156,29 +149,101 @@ export async function queueWebexTestNotification(form: FormData) {
   finish(path);
 }
 
-export async function createCategory(form: FormData) {
-  const admin = await requireAdmin();
-  const schema = z.object({ slug, nameEn: requiredText, nameIt: requiredText, displayOrder: z.coerce.number().int().min(0).default(0) });
-  try {
-    const input = schema.parse(values(form));
-    const [created] = await getDb().insert(categories).values(input).returning({ id: categories.id });
-    await audit(admin.subject, "create", "category", created.id, input);
-  } catch (error) { finish("/admin/services", error); }
-  finish("/admin/services");
+function serviceAdminFailure(error: unknown, form: FormData): ServiceAdminActionState {
+  return { status: "error", message: message(error), values: formValues(form) };
 }
 
-export async function createService(form: FormData) {
+function serviceAdminSuccess(messageText: string): ServiceAdminActionState {
+  revalidatePath("/admin");
+  revalidatePath("/admin/services");
+  revalidatePath("/en", "layout");
+  revalidatePath("/it", "layout");
+  return { status: "success", message: messageText, submissionId: randomUUID() };
+}
+
+async function requireActiveCategory(db: Database | DatabaseTransaction, categoryId: string) {
+  const [category] = await db.select({ id: categories.id }).from(categories)
+    .where(and(eq(categories.id, categoryId), eq(categories.isActive, true), isNull(categories.archivedAt))).limit(1);
+  if (!category) throw new SafeActionError("Select a category that is still active.");
+}
+
+async function ensureUniqueSlug(db: Database | DatabaseTransaction, type: "category" | "service", value: string, exceptId?: string) {
+  const table = type === "category" ? categories : services;
+  const id = type === "category" ? categories.id : services.id;
+  const slugColumn = type === "category" ? categories.slug : services.slug;
+  const where = exceptId ? and(eq(slugColumn, value), ne(id, exceptId)) : eq(slugColumn, value);
+  const [existing] = await db.select({ id }).from(table).where(where).limit(1);
+  if (existing) throw new SafeActionError("That slug is already in use.");
+}
+
+export async function createCategory(_previous: ServiceAdminActionState, form: FormData): Promise<ServiceAdminActionState> {
   const admin = await requireAdmin();
-  const schema = z.object({ categoryId: z.string().uuid(), slug, nameEn: requiredText, nameIt: requiredText, descriptionEn: z.string().trim().max(5000), descriptionIt: z.string().trim().max(5000), monitoringStartedAt: date, displayOrder: z.coerce.number().int().min(0).default(0) });
-  let saved = false;
   try {
-    const input = schema.parse(values(form));
-    const [created] = await getDb().insert(services).values(input).returning({ id: services.id });
-    saved = true;
-    await recalculateAffectedServices([created.id]);
-    await audit(admin.subject, "create", "service", created.id, { ...input, monitoringStartedAt: input.monitoringStartedAt.toISOString() });
-  } catch (error) { finish("/admin/services", saved ? new SafeActionError("The service was saved, but uptime could not be refreshed. Review the worker and database logs.") : error); }
-  finish("/admin/services");
+    const input = categoryInputSchema.parse(values(form));
+    const db = getDb();
+    await db.transaction(async (tx) => {
+      await ensureUniqueSlug(tx, "category", input.slug);
+      const [created] = await tx.insert(categories).values(input).returning({ id: categories.id });
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "create", entityType: "category", entityId: created.id, after: categoryAuditPayload(input) });
+    });
+    return serviceAdminSuccess("Category created.");
+  } catch (error) { return serviceAdminFailure(error, form); }
+}
+
+export async function editCategory(_previous: ServiceAdminActionState, form: FormData): Promise<ServiceAdminActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = categoryInputSchema.extend({ id: z.string().uuid() }).parse(values(form));
+    const db = getDb();
+    await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(categories).where(eq(categories.id, input.id)).limit(1);
+      if (!current || current.archivedAt) throw new SafeActionError("That category is no longer available.");
+      await ensureUniqueSlug(tx, "category", input.slug, input.id);
+      const after = categoryAuditPayload(input);
+      await tx.update(categories).set({ ...after, updatedAt: new Date() }).where(eq(categories.id, input.id));
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "edit", entityType: "category", entityId: input.id, before: categoryAuditPayload(current), after });
+    });
+    return serviceAdminSuccess("Category saved.");
+  } catch (error) { return serviceAdminFailure(error, form); }
+}
+
+export async function createService(_previous: ServiceAdminActionState, form: FormData): Promise<ServiceAdminActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = serviceInputSchema.parse(values(form));
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await requireActiveCategory(tx, input.categoryId);
+      await ensureUniqueSlug(tx, "service", input.slug);
+      const [created] = await tx.insert(services).values(input).returning({ id: services.id });
+      await recalculateAffectedServices([created.id], { tx, now });
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "create", entityType: "service", entityId: created.id, after: serviceAuditPayload(input) });
+    });
+    return serviceAdminSuccess("Service created.");
+  } catch (error) { return serviceAdminFailure(error, form); }
+}
+
+export async function editService(_previous: ServiceAdminActionState, form: FormData): Promise<ServiceAdminActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = serviceInputSchema.extend({ id: z.string().uuid() }).parse(values(form));
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(services).where(eq(services.id, input.id)).limit(1);
+      if (!current || current.archivedAt) throw new SafeActionError("That service is no longer available.");
+      await requireActiveCategory(tx, input.categoryId);
+      await ensureUniqueSlug(tx, "service", input.slug, input.id);
+      const after = serviceAuditPayload(input);
+      await tx.update(services).set({ ...after, monitoringStartedAt: input.monitoringStartedAt, updatedAt: now }).where(eq(services.id, input.id));
+      if (monitoringStartChanged(current.monitoringStartedAt, input.monitoringStartedAt)) {
+        await recalculateAffectedServices([input.id], { tx, now });
+      }
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "edit", entityType: "service", entityId: input.id, before: serviceAuditPayload(current), after });
+    });
+    return serviceAdminSuccess("Service saved.");
+  } catch (error) { return serviceAdminFailure(error, form); }
 }
 
 export async function archiveEntity(form: FormData) {

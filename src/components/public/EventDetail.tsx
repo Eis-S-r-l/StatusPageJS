@@ -2,15 +2,14 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import type { Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
-import type { ServiceCategory, StatusEvent } from "@/modules/status/types";
+import type { StatusEvent } from "@/modules/status/types";
 import { SafeRichText } from "@/components/content/SafeRichText";
 import { EventDuration } from "./EventDuration";
 import { eventStateLabel, formatDateTime } from "./format";
 import styles from "./public.module.css";
 
-export function EventDetail({ event, categories, locale }: { event: StatusEvent; categories: ServiceCategory[]; locale: Locale }) {
+export function EventDetail({ event, locale }: { event: StatusEvent; locale: Locale }) {
   const t = getDictionary(locale);
-  const services = categories.flatMap((category) => category.services).filter((service) => event.affectedServiceIds.includes(service.id));
   const renderedAt = new Date().toISOString();
   return (
     <main className={styles.detailMain} id="main-content">
@@ -25,7 +24,7 @@ export function EventDetail({ event, categories, locale }: { event: StatusEvent;
           <div><dt><Calendar size={16} aria-hidden="true" />{t.started}</dt><dd><time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time></dd></div>
           {event.endsAt && <div><dt><Calendar size={16} aria-hidden="true" />{t.ended}</dt><dd><time dateTime={event.endsAt}>{formatDateTime(event.endsAt, locale)}</time></dd></div>}
           <div><dt><Clock size={16} aria-hidden="true" />{t.duration}</dt><dd><EventDuration start={event.startsAt} end={event.endsAt} locale={locale} initialNow={renderedAt} /></dd></div>
-          <div><dt>{t.affectedServices}</dt><dd>{services.map((service) => service.name[locale]).join(", ")}</dd></div>
+          <div><dt>{t.affectedServices}</dt><dd>{event.affectedServices.map((service) => service.name[locale]).join(", ")}</dd></div>
         </dl>
         <section className={styles.timelineSection} aria-labelledby="timeline-title">
           <h2 id="timeline-title">{t.timeline}</h2>

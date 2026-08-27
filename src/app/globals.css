@@ -6,6 +6,7 @@
   --color-muted: var(--theme-light-muted, #66756e);
   --color-primary: var(--theme-light-primary, #087f5b);
   --color-primary-text: var(--theme-light-primaryText, #ffffff);
+  --color-service-status-text: var(--theme-light-serviceStatusText, #087f5b);
   --color-border: var(--theme-light-border, #dfe7e2);
   --color-success: var(--theme-light-success, #15946c);
   --color-warning: var(--theme-light-warning, #d49b28);
@@ -20,6 +21,7 @@ html[data-theme="dark"] {
   --color-muted: var(--theme-dark-muted, #9caea5);
   --color-primary: var(--theme-dark-primary, #45c795);
   --color-primary-text: var(--theme-dark-primaryText, #07110d);
+  --color-service-status-text: var(--theme-dark-serviceStatusText, #45c795);
   --color-border: var(--theme-dark-border, #2a3a33);
   --color-success: var(--theme-dark-success, #45c795);
   --color-warning: var(--theme-dark-warning, #e1ad45);

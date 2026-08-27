@@ -370,7 +370,7 @@ Incident and maintenance notifications use the configured company name and dark-
 
 Authenticated administrators can use `/admin/appearance` to:
 
-- Configure background, surface, text, accent, border, success, warning, and error colors independently for light and dark mode.
+- Configure background, surface, text, accent, border, success, warning, error, and service-status text colors independently for light and dark mode. Service-status text is separate from its marker color: operational, degraded, outage, and maintenance markers remain success, warning, error, and primary respectively.
 - Configure the text color used on primary/accent controls.
 - Upload separate light-mode and dark-mode logos.
 - Upload or remove the public favicon.

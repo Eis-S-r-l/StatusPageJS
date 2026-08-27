@@ -16,6 +16,7 @@ const labels: Record<PaletteField, string> = {
   muted: "Secondary text",
   primary: "Primary accent",
   primaryText: "Text on primary",
+  serviceStatusText: "Service status text",
   border: "Borders",
   success: "Operational / success",
   warning: "Degraded / warning",
@@ -24,7 +25,7 @@ const labels: Record<PaletteField, string> = {
 
 function PaletteEditor({ name, palette }: { name: "light" | "dark"; palette: ThemePalette }) {
   return <section className={styles.palettePanel}>
-    <div className={styles.paletteHeading}><div><h2>{name === "light" ? "Light mode" : "Dark mode"}</h2><p>Colors are applied after saving. Choose any combination you want.</p></div><div className={styles.palettePreview} style={{ background: palette.background, color: palette.text, borderColor: palette.border }}><span style={{ background: palette.surface, borderColor: palette.border }} /><i style={{ background: palette.primary }} /></div></div>
+    <div className={styles.paletteHeading}><div><h2>{name === "light" ? "Light mode" : "Dark mode"}</h2><p>Colors are applied after saving. Choose any combination you want.</p></div><div className={styles.palettePreview} style={{ background: palette.background, color: palette.text, borderColor: palette.border }}><span style={{ background: palette.surface, borderColor: palette.border }} /><i style={{ background: palette.primary }} /><b style={{ color: palette.serviceStatusText }}><em style={{ background: palette.success }} />Status</b></div></div>
     <div className={styles.colorGrid}>{PALETTE_FIELDS.map((field) => <label className={styles.colorField} key={field}><span>{labels[field]}</span><div><input name={`${name}_${field}`} type="color" defaultValue={palette[field]} aria-label={`${name} ${labels[field]}`} /><code>{palette[field]}</code></div></label>)}</div>
   </section>;
 }

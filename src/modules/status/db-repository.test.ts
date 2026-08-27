@@ -16,6 +16,7 @@ function baseModel(): StatusReadModel {
       {
         id: "category-id",
         slug: "core",
+        displayOrder: 0,
         nameEn: "Core",
         nameIt: "Principali",
         updatedAt: date("2026-08-20T10:00:00Z"),
@@ -26,6 +27,7 @@ function baseModel(): StatusReadModel {
         id: "service-a-id",
         slug: "service-a",
         categoryId: "category-id",
+        displayOrder: 0,
         nameEn: "Service A",
         nameIt: "Servizio A",
         descriptionEn: "First service",
@@ -39,6 +41,7 @@ function baseModel(): StatusReadModel {
         id: "service-b-id",
         slug: "service-b",
         categoryId: "category-id",
+        displayOrder: 1,
         nameEn: "Service B",
         nameIt: "Servizio B",
         descriptionEn: "Second service",
@@ -86,8 +89,8 @@ describe("buildStatusSnapshot", () => {
     expect(first?.state).toBe("outage");
     expect(first?.history).toHaveLength(60);
     expect(snapshot.overallState).toBe("outage");
-    expect(snapshot.activeIncidents[0]?.affectedServiceIds).toEqual([
-      "service-a",
+    expect(snapshot.activeIncidents[0]?.affectedServices).toEqual([
+      { id: "service-a", name: { en: "Service A", it: "Servizio A" } },
     ]);
     expect(snapshot.lastUpdatedAt).toBe("2026-08-26T11:55:00.000Z");
     expect(snapshot.uptimeIntervalDays).toBe(45);
@@ -155,8 +158,8 @@ describe("buildStatusSnapshot", () => {
       "maintenance",
     ]);
     expect(snapshot.overallState).toBe("outage");
-    expect(snapshot.upcomingMaintenance[0]?.affectedServiceIds).toEqual([
-      "service-b",
+    expect(snapshot.upcomingMaintenance[0]?.affectedServices).toEqual([
+      { id: "service-b", name: { en: "Service B", it: "Servizio B" } },
     ]);
   });
 
@@ -199,6 +202,35 @@ describe("buildStatusSnapshot", () => {
     ]);
     expect(snapshot.recentEvents.map((event) => event.slug)).toEqual([
       "resolved",
+    ]);
+  });
+
+  it("keeps affected service names when the service is no longer public", () => {
+    const model = baseModel();
+    model.incidents.push({
+      id: "archived-service-incident",
+      slug: "archived-service-incident",
+      titleEn: "Archived service",
+      titleIt: "Servizio archiviato",
+      descriptionEn: "Details",
+      descriptionIt: "Dettagli",
+      status: "resolved",
+      startedAt: date("2026-08-25T10:00:00Z"),
+      resolvedAt: date("2026-08-25T10:30:00Z"),
+      publishedAt: date("2026-08-25T10:00:00Z"),
+      updatedAt: date("2026-08-25T10:30:00Z"),
+    });
+    model.incidentAssociations.push({
+      eventId: "archived-service-incident",
+      serviceId: "archived-service-id",
+      serviceSlug: "retired-service",
+      serviceNameEn: "Retired service",
+      serviceNameIt: "Servizio ritirato",
+      affectsUptime: true,
+    });
+
+    expect(buildStatusSnapshot(model).recentEvents[0]?.affectedServices).toEqual([
+      { id: "retired-service", name: { en: "Retired service", it: "Servizio ritirato" } },
     ]);
   });
 });

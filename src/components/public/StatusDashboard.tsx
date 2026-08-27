@@ -1,33 +1,14 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CalendarClock, Check, Radio } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, Radio } from "lucide-react";
 import type { Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
-import type { PublicStatusSnapshot, ServiceCategory, StatusEvent } from "@/modules/status/types";
-import { eventStateLabel, formatDateTime } from "./format";
+import type { PublicStatusSnapshot } from "@/modules/status/types";
+import { formatDateTime } from "./format";
 import { SubscribeForm } from "./SubscribeForm";
-import { SafeRichText } from "@/components/content/SafeRichText";
 import { turnstileSiteKey } from "@/modules/subscriptions/turnstile-config";
+import { sortLocalizedByOrder } from "@/modules/status/ordering";
+import { EventCard } from "./EventCard";
 import styles from "./public.module.css";
-
-function EventCard({ event, locale, categories }: { event: StatusEvent; locale: Locale; categories: ServiceCategory[] }) {
-  const t = getDictionary(locale);
-  const serviceNames = categories.flatMap((category) => category.services).filter((service) => event.affectedServiceIds.includes(service.id)).map((service) => service.name[locale]);
-  const href = `/${locale}/${event.kind === "incident" ? "incidents" : "maintenance"}/${event.slug}`;
-  return (
-    <article className={styles.eventCard}>
-      <div className={styles.eventTopline}>
-        <span className={`${styles.eventState} ${styles[event.state]}`}>{eventStateLabel(event.state, t)}</span>
-        <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time>
-      </div>
-      <h3><Link href={href}>{event.title[locale]}</Link></h3>
-      <SafeRichText html={event.summary[locale]} className={styles.richText} />
-      <div className={styles.eventFooter}>
-        <span>{t.affectedServices}: {serviceNames.join(", ")}</span>
-        <Link href={href}>{t.viewDetails} <ArrowRight size={15} aria-hidden="true" /></Link>
-      </div>
-    </article>
-  );
-}
 
 export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSnapshot; locale: Locale }) {
   const t = getDictionary(locale);
@@ -50,11 +31,11 @@ export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSn
         <div className={styles.legend} aria-label={t.historyLegend}>
           {(["operational", "degraded", "outage", "maintenance"] as const).map((state) => <span key={state}><i className={styles[state]} />{t.availability[state]}</span>)}
         </div>
-        {snapshot.categories.map((category) => (
+        {sortLocalizedByOrder(snapshot.categories, locale).map((category) => (
           <div className={styles.category} key={category.id}>
             <h3>{category.name[locale]}</h3>
             <div className={styles.serviceList}>
-              {category.services.map((service) => (
+              {sortLocalizedByOrder(category.services, locale).map((service) => (
                 <article className={styles.service} key={service.id}>
                   <div className={styles.serviceMeta}>
                     <div><h4>{service.name[locale]}</h4><p>{service.description[locale]}</p><span className={`${styles.serviceState} ${styles[service.state]}`}><i />{t.status[service.state]}</span></div>
@@ -73,17 +54,17 @@ export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSn
 
       <section className={styles.section} aria-labelledby="active-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.activeEyebrow}</p><h2 id="active-title">{t.activeTitle}</h2></div></div>
-        {snapshot.activeIncidents.length ? <div className={styles.eventList}>{snapshot.activeIncidents.map((event) => <EventCard key={event.slug} event={event} locale={locale} categories={snapshot.categories} />)}</div> : <div className={styles.empty}><Check aria-hidden="true" /><div><strong>{t.noActive}</strong><p>{t.noActiveBody}</p></div></div>}
+        {snapshot.activeIncidents.length ? <div className={styles.eventList}>{snapshot.activeIncidents.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div> : <div className={styles.empty}><Check aria-hidden="true" /><div><strong>{t.noActive}</strong><p>{t.noActiveBody}</p></div></div>}
       </section>
 
       <section className={styles.section} aria-labelledby="maintenance-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.maintenanceEyebrow}</p><h2 id="maintenance-title">{t.maintenanceTitle}</h2></div><CalendarClock aria-hidden="true" /></div>
-        {snapshot.upcomingMaintenance.length ? <div className={styles.eventList}>{snapshot.upcomingMaintenance.map((event) => <EventCard key={event.slug} event={event} locale={locale} categories={snapshot.categories} />)}</div> : <div className={styles.empty}>{t.noMaintenance}</div>}
+        {snapshot.upcomingMaintenance.length ? <div className={styles.eventList}>{snapshot.upcomingMaintenance.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div> : <div className={styles.empty}>{t.noMaintenance}</div>}
       </section>
 
       <section className={styles.section} aria-labelledby="recent-title">
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.recentEyebrow}</p><h2 id="recent-title">{t.recentTitle}</h2></div></div>
-        <div className={styles.eventList}>{snapshot.recentEvents.map((event) => <EventCard key={event.slug} event={event} locale={locale} categories={snapshot.categories} />)}</div>
+        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.recentEyebrow}</p><h2 id="recent-title">{t.recentTitle}</h2></div><div className={styles.historyLinks}><Link href={`/${locale}/incidents`}>{t.viewAllIncidents}</Link><Link href={`/${locale}/maintenance`}>{t.viewAllMaintenance}</Link></div></div>
+        <div className={styles.eventList}>{snapshot.recentEvents.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div>
       </section>
 
       <section className={styles.subscribePanel} id="subscribe" aria-labelledby="subscribe-title">

@@ -17,6 +17,7 @@ import {
 } from "@/db/schema";
 import { DEFAULT_APPEARANCE } from "@/modules/appearance/server";
 import { DEFAULT_DARK_PALETTE, DEFAULT_LIGHT_PALETTE, normalizePalette } from "@/modules/appearance/palette";
+import { sortServicesForManagement } from "@/modules/admin/service-validation";
 
 export type AdminDataResult<T> =
   | { available: true; data: T }
@@ -39,7 +40,7 @@ export const loadServiceManagement = () => safely(async () => {
     db.select().from(categories).where(isNull(categories.archivedAt)).orderBy(asc(categories.displayOrder), asc(categories.nameEn)),
     db.select().from(services).where(isNull(services.archivedAt)).orderBy(asc(services.displayOrder), asc(services.nameEn)),
   ]);
-  return { categories: categoryRows, services: serviceRows };
+  return { categories: categoryRows, services: sortServicesForManagement(categoryRows, serviceRows) };
 });
 
 export const loadEventFormData = () => safely(async () => {

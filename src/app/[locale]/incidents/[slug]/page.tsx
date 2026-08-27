@@ -27,8 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function IncidentPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;
   if (!isLocale(locale)) notFound();
-  const [event, snapshot] = await Promise.all([publicStatusRepository.getIncident(slug), publicStatusRepository.getSnapshot()]);
+  const event = await publicStatusRepository.getIncident(slug);
   if (!event) notFound();
   const alternatePath = `/${otherLocale(locale)}/incidents/${slug}`;
-  return <PublicShell locale={locale} alternatePath={alternatePath}><EventDetail event={event} categories={snapshot.categories} locale={locale} /></PublicShell>;
+  return <PublicShell locale={locale} alternatePath={alternatePath}><EventDetail event={event} locale={locale} /></PublicShell>;
 }
