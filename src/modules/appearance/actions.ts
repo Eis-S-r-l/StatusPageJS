@@ -10,22 +10,16 @@ import { auditLogs, systemSettings } from "@/db/schema";
 import { requireAdmin } from "@/modules/auth/guard";
 
 import { prepareAsset, removeAsset, storeAsset, type PendingAsset } from "./assets";
-import { contrastRatio, PALETTE_FIELDS, type ThemePalette } from "./palette";
+import { PALETTE_FIELDS, type ThemePalette } from "./palette";
 
 const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i, "Choose a valid six-digit color.").transform((value) => value.toLowerCase());
-class SafeAppearanceError extends Error {}
 
 function parsePalette(form: FormData, theme: "light" | "dark"): ThemePalette {
-  const palette = Object.fromEntries(PALETTE_FIELDS.map((field) => [field, hexColor.parse(form.get(`${theme}_${field}`))])) as ThemePalette;
-  const label = theme === "light" ? "Light mode" : "Dark mode";
-  if (contrastRatio(palette.text, palette.background) < 4.5 || contrastRatio(palette.text, palette.surface) < 4.5) throw new SafeAppearanceError(`${label} text needs more contrast against its background and cards.`);
-  if (contrastRatio(palette.primaryText, palette.primary) < 4.5) throw new SafeAppearanceError(`${label} primary text needs more contrast against the primary accent.`);
-  return palette;
+  return Object.fromEntries(PALETTE_FIELDS.map((field) => [field, hexColor.parse(form.get(`${theme}_${field}`))])) as ThemePalette;
 }
 
 function errorMessage(error: unknown): string {
   if (error instanceof z.ZodError) return error.issues[0]?.message ?? "Review the selected colors.";
-  if (error instanceof SafeAppearanceError) return error.message;
   if (error instanceof Error && [
     "Images must be 2 MB or smaller.",
     "The favicon must be a PNG or ICO image.",
