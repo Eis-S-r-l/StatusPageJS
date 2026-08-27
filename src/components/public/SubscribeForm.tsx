@@ -70,6 +70,10 @@ export function SubscribeForm({ locale, telegramUsername, turnstileSiteKey, webe
     }
   }
 
+  if (state === "success") {
+    return <div className={styles.subscriptionSuccess} role="status" aria-live="polite">{t.success}</div>;
+  }
+
   return (
     <form className={styles.subscriptionForm} onSubmit={submit}>
       <label className={styles.emailField}>
@@ -85,7 +89,7 @@ export function SubscribeForm({ locale, telegramUsername, turnstileSiteKey, webe
         <Bell size={17} aria-hidden="true" />{state === "submitting" ? t.submitting : t.submit}
       </button>
       <p className={state === "error" ? styles.formError : styles.formMessage} role="status" aria-live="polite">
-        {state === "success" ? t.success : state === "error" ? t.error : ""}
+        {state === "error" ? t.error : ""}
       </p>
       {(telegramBot || webexBotEmail) && <div className={styles.botLinks}>
         {telegramBot && <a href={`https://t.me/${telegramBot}?start=${locale}`} target="_blank" rel="noreferrer">{t.telegram}</a>}

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import { fontClassName } from "@/app/fonts";
 import { brandingAssetUrl, loadPublicAppearance } from "@/modules/appearance/server";
-import { appearanceStyle, bootThemeScript } from "@/modules/appearance/theme";
+import { appearanceStyle, bootThemeScript, themeFromCookie } from "@/modules/appearance/theme";
 import { isLocale, locales } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import "../globals.css";
@@ -43,8 +44,9 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const appearance = await loadPublicAppearance();
+  const initialTheme = themeFromCookie((await cookies()).get("eis-theme")?.value);
   return (
-    <html lang={locale} className={fontClassName} style={appearanceStyle(appearance)} suppressHydrationWarning>
+    <html lang={locale} className={fontClassName} data-theme={initialTheme} style={appearanceStyle(appearance)} suppressHydrationWarning>
       <head><Script id="eis-theme-boot" strategy="beforeInteractive">{bootThemeScript}</Script></head>
       <body>{children}</body>
     </html>

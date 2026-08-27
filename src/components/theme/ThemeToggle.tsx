@@ -5,6 +5,16 @@ import { useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 
+function writeThemeCookie(theme: Theme) {
+  document.cookie = `eis-theme=${theme}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  writeThemeCookie(theme);
+}
+
 function getTheme(): Theme {
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
@@ -12,7 +22,7 @@ function getTheme(): Theme {
 function subscribe(onChange: () => void) {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const onSystemChange = () => {
-    if (!localStorage.getItem("eis-theme")) document.documentElement.dataset.theme = media.matches ? "dark" : "light";
+    if (!localStorage.getItem("eis-theme")) applyTheme(media.matches ? "dark" : "light");
     onChange();
   };
   window.addEventListener("eis-theme-change", onChange);
@@ -25,8 +35,7 @@ export function ThemeToggle({ labelLight = "Use light mode", labelDark = "Use da
 
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    document.documentElement.style.colorScheme = next;
+    applyTheme(next);
     localStorage.setItem("eis-theme", next);
     window.dispatchEvent(new Event("eis-theme-change"));
   }

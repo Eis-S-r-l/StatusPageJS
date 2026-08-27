@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import Script from "next/script";
 import { connection } from "next/server";
@@ -7,7 +8,7 @@ import { Bell, CalendarClock, Gauge, LogOut, Palette, Settings, Siren, Users, Wr
 import { fontClassName } from "@/app/fonts";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { brandingAssetUrl, loadPublicAppearance } from "@/modules/appearance/server";
-import { appearanceStyle, bootThemeScript } from "@/modules/appearance/theme";
+import { appearanceStyle, bootThemeScript, themeFromCookie } from "@/modules/appearance/theme";
 import { getAuthConfig, isDevAuthEnabled } from "@/modules/auth/config";
 import { readAdminSession } from "@/modules/auth/session";
 
@@ -33,8 +34,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const configured = Boolean(getAuthConfig()) || isDevAuthEnabled();
   const session = configured ? await readAdminSession() : null;
   const appearance = await loadPublicAppearance();
+  const initialTheme = themeFromCookie((await cookies()).get("eis-theme")?.value);
   return (
-    <html lang="en" className={fontClassName} style={appearanceStyle(appearance)} suppressHydrationWarning>
+    <html lang="en" className={fontClassName} data-theme={initialTheme} style={appearanceStyle(appearance)} suppressHydrationWarning>
       <head><Script id="eis-theme-boot" strategy="beforeInteractive">{bootThemeScript}</Script></head>
       <body>
         {!session ? children : <div className={styles.frame}>
