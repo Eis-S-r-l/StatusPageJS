@@ -18,10 +18,13 @@ export function requestClientKey(request: Request, purpose: string): string {
   // Nginx is the only public entry point and overwrites X-Real-IP. Prefer it
   // over the first X-Forwarded-For value, which a client can spoof before
   // Nginx appends the real peer address.
+  return `${purpose}:${requestClientIp(request)}`;
+}
+
+export function requestClientIp(request: Request): string {
   const realIp = request.headers.get("x-real-ip")?.trim();
   const forwarded = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
-  const ip = realIp || forwarded || "unknown";
-  return `${purpose}:${ip}`;
+  return realIp || forwarded || "unknown";
 }
 
 export function clearRateLimitsForTests(): void { attempts.clear(); }

@@ -97,8 +97,10 @@
 .subscriptionChoices { grid-column: 1 / -1; display: flex; gap: 15px; color: var(--color-muted); font-size: .74rem; }
 .subscriptionChoices label { display: flex; align-items: center; gap: 5px; }
 .subscriptionChoices input { accent-color: var(--color-primary); }
-.subscribePanel .formMessage, .subscribePanel .formError { grid-column: 1 / -1; min-height: 18px; margin: 0; color: var(--color-success); font-size: .74rem; }
-.subscribePanel .formError { color: var(--color-danger); }
+.turnstileField { grid-column: 1 / -1; width: 100%; min-height: 65px; }
+.turnstileField > div:first-child { width: 100%; }
+.subscriptionForm .formMessage, .subscriptionForm .formError { grid-column: 1 / -1; min-height: 18px; margin: 0; color: var(--color-success); font-size: .74rem; }
+.subscriptionForm .formError { color: var(--color-danger); }
 .botLinks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .botLinks a { color: var(--color-primary); font-size: .75rem; font-weight: 700; text-underline-offset: 3px; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -128,7 +130,7 @@
   .hero { padding-top: 52px; } .current { display: none; } .section { padding-block: 32px; } .sectionHeading { align-items: center; }
   .legend { gap: 8px 11px; } .service { padding: 20px 16px; } .history { gap: 2px; } .serviceMeta p { display: none; }
   .eventFooter { align-items: end; } .eventFooter > span { max-width: 62%; } .subscribePanel { margin-block: 32px 48px; padding: 24px; align-items: flex-start; flex-direction: column; }
-  .subscriptionForm { width: 100%; grid-template-columns: 1fr; } .subscriptionForm button, .subscriptionChoices, .subscribePanel .formMessage, .subscribePanel .formError, .botLinks { grid-column: 1; }
+  .subscriptionForm { width: 100%; grid-template-columns: 1fr; } .subscriptionForm button, .subscriptionChoices, .turnstileField, .subscriptionForm .formMessage, .subscriptionForm .formError, .botLinks { grid-column: 1; }
   .footer { flex-direction: column; } .facts { grid-template-columns: 1fr; } .facts > div { border-right: 0; } .facts > div:nth-last-child(-n+2) { border-bottom: 1px solid var(--color-border); } .facts > div:last-child { border-bottom: 0; }
   .timelineMeta { align-items: flex-start; flex-direction: column; gap: 4px; }
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { allowSubscriptionRequest, clearRateLimitsForTests, requestClientKey } from "./rate-limit";
+import { allowSubscriptionRequest, clearRateLimitsForTests, requestClientIp, requestClientKey } from "./rate-limit";
 
 describe("subscription request rate limiting", () => {
   beforeEach(clearRateLimitsForTests);
@@ -19,5 +19,6 @@ describe("subscription request rate limiting", () => {
     } });
     expect(requestClientKey(request, "subscribe")).toBe("subscribe:203.0.113.8");
     expect(requestClientKey(request, "unsubscribe")).toBe("unsubscribe:203.0.113.8");
+    expect(requestClientIp(request)).toBe("203.0.113.8");
   });
 });

@@ -64,6 +64,7 @@ If another virtual host already defines shared proxy or security settings, merge
 Before production launch:
 
 - Complete the Cognito setup described below.
+- Complete the Cloudflare Turnstile setup described below so the public email forms are enabled.
 - Verify the email-sending domain in Amazon SES and request production access.
 - Complete the Telegram setup below and register the optional Webex webhook using a strong webhook secret.
 - Set the public Telegram bot username and optional Webex bot email so visitors can open the bot onboarding flow from the status page. Telegram accepts `/start en`, `/start it`, and `/stop`; Webex accepts `subscribe en`, `subscribe it`, and `stop`.
@@ -126,6 +127,28 @@ ADMIN_DEV_BYPASS=false
 The application uses the OAuth authorization-code flow with PKCE. During login it stores a ten-minute HTTP-only flow cookie containing the PKCE verifier, state, and nonce. After Cognito returns a valid ID token and the required group is confirmed, the server discards the Cognito tokens and creates an eight-hour signed application session cookie.
 
 Passwords, MFA responses, Cognito tokens, the Cognito client secret, and `SESSION_SECRET` are not stored in browser local storage. Production cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`. Removing an administrator from the Cognito group prevents their next login but does not revoke an already-issued application session; that session remains valid until logout or its eight-hour expiry.
+
+## Cloudflare Turnstile setup
+
+The public email subscription and unsubscription forms use the existing Turnstile widget with site key `0x4AAAAAAEdj1rvMcjmnbsjH`. The browser renders the challenge, but the Next.js API always validates the resulting single-use token with Cloudflare before it queues an email. Tokens are also checked against the exact `subscribe` or `unsubscribe` action and an approved frontend hostname.
+
+In the Cloudflare dashboard, open the existing widget and confirm that its hostname list contains every hostname where the public forms will run. Obtain the widget secret from the dashboard and place it directly in the deployment's ignored `.env` file; do not commit it or paste it into chat:
+
+```env
+TURNSTILE_SITE_KEY=0x4AAAAAAEdj1rvMcjmnbsjH
+TURNSTILE_SECRET=replace-with-the-existing-widget-secret
+TURNSTILE_HOSTNAMES=status.example.com
+```
+
+Replace `status.example.com` with the hostname from `APP_URL`. `TURNSTILE_HOSTNAMES` is a comma-separated list of hostnames only: do not include `https://`, ports, or paths. A production value must not include `localhost` or `127.0.0.1`. For local development, use a widget that permits local hostnames and set `TURNSTILE_HOSTNAMES=localhost,127.0.0.1`.
+
+After changing the production `.env`, recreate the web container so it receives the new secret:
+
+```bash
+docker compose up -d --force-recreate web
+```
+
+The worker does not need the Turnstile secret. If nginx or another layer adds a Content Security Policy, allow `https://challenges.cloudflare.com` in both `script-src` and `frame-src`; the supplied nginx example does not define a CSP. Missing configuration makes the endpoints fail closed with a temporary-unavailable response, while missing, expired, replayed, wrong-action, or wrong-hostname tokens are rejected before subscription logic runs.
 
 ## Telegram bot setup
 

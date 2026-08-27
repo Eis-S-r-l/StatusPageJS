@@ -14,6 +14,12 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
+    # This example deliberately does not define a Content-Security-Policy.
+    # If a CSP is added here or by a shared Nginx include, Turnstile requires
+    # https://challenges.cloudflare.com in both script-src and frame-src.
+    # Pre-clearance also requires 'self' in connect-src. Merge those sources
+    # into the complete policy instead of adding a second CSP header.
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;

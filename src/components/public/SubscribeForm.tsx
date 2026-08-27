@@ -1,11 +1,12 @@
 "use client";
 
 import { Bell } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useRef, useState } from "react";
 
 import type { Locale } from "@/modules/i18n/config";
 
 import styles from "./public.module.css";
+import { TurnstileWidget, type TurnstileWidgetHandle } from "./TurnstileWidget";
 
 const copy = {
   en: {
@@ -34,10 +35,13 @@ const copy = {
   },
 } as const;
 
-export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { locale: Locale; telegramUsername?: string; webexBotEmail?: string }) {
+export function SubscribeForm({ locale, telegramUsername, turnstileSiteKey, webexBotEmail }: { locale: Locale; telegramUsername?: string; turnstileSiteKey: string; webexBotEmail?: string }) {
   const t = copy[locale];
   const telegramBot = telegramUsername?.replace(/^@/, "");
   const [state, setState] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const handleTurnstileToken = useCallback((token: string) => setTurnstileToken(token), []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,6 +57,7 @@ export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { loc
           language: locale,
           receiveIncidents: form.get("receiveIncidents") === "on",
           receiveMaintenance: form.get("receiveMaintenance") === "on",
+          "cf-turnstile-response": turnstileToken,
         }),
       });
       if (!response.ok) throw new Error("Subscription rejected");
@@ -60,6 +65,8 @@ export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { loc
       setState("success");
     } catch {
       setState("error");
+    } finally {
+      turnstileRef.current?.reset();
     }
   }
 
@@ -73,7 +80,8 @@ export function SubscribeForm({ locale, telegramUsername, webexBotEmail }: { loc
         <label><input name="receiveIncidents" type="checkbox" defaultChecked /> {t.incidents}</label>
         <label><input name="receiveMaintenance" type="checkbox" defaultChecked /> {t.maintenance}</label>
       </div>
-      <button type="submit" disabled={state === "submitting"}>
+      <TurnstileWidget ref={turnstileRef} action="subscribe" locale={locale} onToken={handleTurnstileToken} siteKey={turnstileSiteKey} />
+      <button type="submit" disabled={state === "submitting" || !turnstileToken}>
         <Bell size={17} aria-hidden="true" />{state === "submitting" ? t.submitting : t.submit}
       </button>
       <p className={state === "error" ? styles.formError : styles.formMessage} role="status" aria-live="polite">

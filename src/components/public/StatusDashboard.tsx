@@ -6,6 +6,7 @@ import type { PublicStatusSnapshot, ServiceCategory, StatusEvent } from "@/modul
 import { eventStateLabel, formatDateTime } from "./format";
 import { SubscribeForm } from "./SubscribeForm";
 import { SafeRichText } from "@/components/content/SafeRichText";
+import { turnstileSiteKey } from "@/modules/subscriptions/turnstile-config";
 import styles from "./public.module.css";
 
 function EventCard({ event, locale, categories }: { event: StatusEvent; locale: Locale; categories: ServiceCategory[] }) {
@@ -87,7 +88,7 @@ export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSn
 
       <section className={styles.subscribePanel} id="subscribe" aria-labelledby="subscribe-title">
         <div><p className={styles.eyebrow}>{t.subscribe}</p><h2 id="subscribe-title">{t.subscribeTitle}</h2><p>{t.subscribeBody}</p></div>
-        <SubscribeForm locale={locale} telegramUsername={process.env.TELEGRAM_BOT_USERNAME} webexBotEmail={process.env.WEBEX_BOT_EMAIL} />
+        <SubscribeForm locale={locale} telegramUsername={process.env.TELEGRAM_BOT_USERNAME} turnstileSiteKey={turnstileSiteKey()} webexBotEmail={process.env.WEBEX_BOT_EMAIL} />
       </section>
     </main>
   );
