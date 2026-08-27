@@ -3,6 +3,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { getDb, type Database, type DatabaseTransaction } from "../../db/client";
 import { notificationJobs, services, subscriptionCategories, subscriptionServices, subscriptions, systemSettings } from "../../db/schema";
 import { eventNotificationEmail } from "./email-templates";
+import { eventNotificationTelegramHtml } from "./telegram-message";
 
 export interface EventNotification {
   kind: "incident" | "maintenance";
@@ -57,7 +58,7 @@ export async function enqueueEventNotifications(
     return event.serviceIds.some((id) => selectedServices?.has(id)) || [...affectedCategories].some((id) => selectedCategories?.has(id));
   }).map((recipient) => {
     const italian = recipient.language === "it";
-    const locale = italian ? "it" : "en";
+    const locale: "en" | "it" = italian ? "it" : "en";
     const title = italian ? event.titleIt : event.titleEn;
     const text = italian ? event.descriptionIt : event.descriptionEn;
     const richBody = italian ? event.descriptionHtmlIt : event.descriptionHtmlEn;
@@ -69,11 +70,18 @@ export async function enqueueEventNotifications(
     if (event.startsAt) details.push({ label: italian ? "Inizio" : "Start", value: event.startsAt.toLocaleString(dateLocale, { timeZone }) });
     if (event.endsAt) details.push({ label: italian ? "Fine" : "End", value: event.endsAt.toLocaleString(dateLocale, { timeZone }) });
     const eventPath = `/${locale}/${event.kind === "incident" ? "incidents" : "maintenance"}/${encodeURIComponent(event.slug ?? event.sourceId)}`;
-    const payload = eventNotificationEmail({
+    const eventUrl = new URL(eventPath, appUrl).toString();
+    const messageInput = {
       locale, kind: event.kind, title, body: text || title, bodyHtml: richBody,
-      eventUrl: new URL(eventPath, appUrl).toString(), unsubscribeUrl: new URL(`/${locale}/unsubscribe`, appUrl).toString(),
-      companyName: appearance?.companyName ?? "EIS", logoUrl, details,
-    });
+      eventUrl, details,
+    };
+    const payload = {
+      ...eventNotificationEmail({
+        ...messageInput, unsubscribeUrl: new URL(`/${locale}/unsubscribe`, appUrl).toString(),
+        companyName: appearance?.companyName ?? "EIS", logoUrl,
+      }),
+      telegramHtml: eventNotificationTelegramHtml(messageInput),
+    };
     const type = event.notificationType ?? (event.kind === "incident" ? "incident" : "maintenance_announcement");
     return {
       subscriptionId: recipient.id,

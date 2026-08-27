@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CalendarClock, Check, Info, Radio } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Check, Radio } from "lucide-react";
 import type { Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import type { PublicStatusSnapshot, ServiceCategory, StatusEvent } from "@/modules/status/types";
@@ -68,7 +68,6 @@ export function StatusDashboard({ snapshot, locale }: { snapshot: PublicStatusSn
             </div>
           </div>
         ))}
-        <aside className={styles.disclosure}><Info size={18} aria-hidden="true" /><p>{t.disclosure}</p></aside>
       </section>
 
       <section className={styles.section} aria-labelledby="active-title">

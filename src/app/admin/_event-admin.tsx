@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStor
 import { archiveEvent, createIncident, createMaintenance, editIncident, editMaintenance, updateIncident, updateMaintenance } from "@/modules/admin/actions";
 import { INITIAL_EVENT_ACTION_STATE, type EventActionState } from "@/modules/admin/event-validation";
 import { LocalDateTimeField, RichTextField } from "./_event-fields";
+import { AutoSlugFields } from "./_slug-fields";
 import styles from "./admin.module.css";
 
 type ServiceOption = { id: string; nameEn: string };
@@ -62,9 +63,9 @@ function ServiceFields({ services, selected, uptimeSelected, defaultAffectsUptim
     <span className={styles.fieldHint}>Choose each affected service and whether this event counts as downtime for that service.</span>
     <div className={styles.serviceChecks}>{services.map((service) => {
       const isSelected = selectedIds.has(service.id);
-      return <div className={styles.serviceCheck} key={service.id}>
-        <label className={styles.check}><input type="checkbox" name="serviceIds" value={service.id} checked={isSelected} onChange={(event) => toggleService(service.id, event.target.checked)} />{service.nameEn}</label>
-        <label className={styles.check}><input type="checkbox" name="uptimeServiceIds" value={service.id} checked={isSelected && uptimeIds.has(service.id)} disabled={!isSelected} onChange={(event) => toggleUptime(service.id, event.target.checked)} />Counts as downtime</label>
+      return <div className={styles.serviceCheck} data-selected={isSelected || undefined} key={service.id}>
+        <label className={styles.serviceName}><input type="checkbox" name="serviceIds" value={service.id} checked={isSelected} onChange={(event) => toggleService(service.id, event.target.checked)} /><span>{service.nameEn}</span></label>
+        <label className={styles.downtimeChoice}><input type="checkbox" name="uptimeServiceIds" value={service.id} checked={isSelected && uptimeIds.has(service.id)} disabled={!isSelected} aria-label={`Count ${service.nameEn} as downtime`} onChange={(event) => toggleUptime(service.id, event.target.checked)} /><span>Downtime</span></label>
       </div>;
     })}</div>
   </fieldset>;
@@ -78,9 +79,8 @@ function IncidentForm({ item, services, onSuccess }: { item?: IncidentItem; serv
   const uptimeSelected = stateValues(state, "uptimeServiceIds", item?.uptimeServiceIds ?? []);
   return <form action={formAction} className={styles.form}>
     {item && <input type="hidden" name="id" value={item.id} />}
-    <label className={styles.field}>Slug<input name="slug" required defaultValue={stateValue(state, "slug", item?.slug)} /></label>
+    <AutoSlugFields sourceLabel="English title" sourceName="titleEn" sourceDefaultValue={stateValue(state, "titleEn", item?.titleEn)} slugDefaultValue={stateValue(state, "slug", item?.slug)} slugPlaceholder="api-connectivity-issue" />
     <label className={styles.field}>Status{item?.isPublished && <input type="hidden" name="status" value={item.status} />}<select name={item?.isPublished ? undefined : "status"} disabled={item?.isPublished} defaultValue={stateValue(state, "status", item?.status ?? "investigating")}><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select>{item?.isPublished && <span className={styles.fieldHint}>Use Add update to change the public status and notify subscribers.</span>}</label>
-    <label className={styles.field}>English title<input name="titleEn" required defaultValue={stateValue(state, "titleEn", item?.titleEn)} /></label>
     <label className={styles.field}>Italian title<input name="titleIt" required defaultValue={stateValue(state, "titleIt", item?.titleIt)} /></label>
     <RichTextField label="English description" name="descriptionEn" defaultValue={stateValue(state, "descriptionEn", item?.descriptionEn)} />
     <RichTextField label="Italian description" name="descriptionIt" defaultValue={stateValue(state, "descriptionIt", item?.descriptionIt)} />
@@ -150,9 +150,9 @@ function MaintenanceForm({ item, services, defaultAffectsUptime, onSuccess }: { 
   const uptimeSelected = stateValues(state, "uptimeServiceIds", item?.uptimeServiceIds ?? []);
   return <form action={formAction} className={styles.form}>
     {item && <input type="hidden" name="id" value={item.id} />}
-    <label className={styles.field}>Slug<input name="slug" required defaultValue={stateValue(state, "slug", item?.slug)} /></label>
+    <AutoSlugFields sourceLabel="English title" sourceName="titleEn" sourceDefaultValue={stateValue(state, "titleEn", item?.titleEn)} slugDefaultValue={stateValue(state, "slug", item?.slug)} slugPlaceholder="database-capacity-upgrade" />
     <label className={styles.field}>Status{item?.isPublished && <input type="hidden" name="status" value={item.status} />}<select name={item?.isPublished ? undefined : "status"} disabled={item?.isPublished} defaultValue={stateValue(state, "status", item?.status ?? "scheduled")}><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>{item?.isPublished && <span className={styles.fieldHint}>Use Update status to change the public status and notify subscribers.</span>}</label>
-    <label className={styles.field}>English title<input name="titleEn" required defaultValue={stateValue(state, "titleEn", item?.titleEn)} /></label><label className={styles.field}>Italian title<input name="titleIt" required defaultValue={stateValue(state, "titleIt", item?.titleIt)} /></label>
+    <label className={styles.field}>Italian title<input name="titleIt" required defaultValue={stateValue(state, "titleIt", item?.titleIt)} /></label>
     <RichTextField label="English description" name="descriptionEn" defaultValue={stateValue(state, "descriptionEn", item?.descriptionEn)} /><RichTextField label="Italian description" name="descriptionIt" defaultValue={stateValue(state, "descriptionIt", item?.descriptionIt)} />
     <LocalDateTimeField label="Scheduled start" name="scheduledStartAt" required defaultValue={stateValue(state, "scheduledStartAt", item?.scheduledStartAt)} /><LocalDateTimeField label="Scheduled end" name="scheduledEndAt" required defaultValue={stateValue(state, "scheduledEndAt", item?.scheduledEndAt)} />
     <LocalDateTimeField label="Actual start (optional)" name="actualStartAt" defaultValue={stateValue(state, "actualStartAt", item?.actualStartAt ?? "")} /><LocalDateTimeField label="Actual end (optional)" name="actualEndAt" defaultValue={stateValue(state, "actualEndAt", item?.actualEndAt ?? "")} />

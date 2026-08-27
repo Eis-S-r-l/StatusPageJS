@@ -279,7 +279,7 @@ The public page displays:
 - The calculation timestamp.
 - `N/A` if monitoring has not started or no valid calculation exists.
 
-The UI should state that uptime is calculated from manually recorded incidents and qualifying maintenance.
+The public UI should present uptime without exposing internal implementation details about how incidents are recorded.
 
 ## 7. Admin functionality
 
@@ -478,9 +478,9 @@ Estimated delivery is seven to nine weeks for one experienced engineer, or appro
 
 The working monolith is now in place. It includes the Next.js public and admin views, PostgreSQL schema and migrations, Cognito login flow, category/service/event administration, mutation-triggered persisted uptime calculations, a rolling refresh worker, bilingual public pages and detail timelines, configurable light/dark themes and branding, email double opt-in and confirmed unsubscription, Telegram and Webex command onboarding, database-backed notification delivery with retries, Docker Compose, an example Nginx virtual host, and VM setup documentation.
 
-Incident and maintenance administration now uses browser-local datetime inputs with UTC persistence, future-time validation, state-preserving server actions, restricted English/Italian rich-text editors, list-focused modal workflows, complete base-record editing, and separate incident timeline or maintenance status updates. Event mutations, service-link changes, uptime recalculation, audit entries, and notification outbox inserts commit atomically.
+Incident and maintenance administration now uses browser-local datetime inputs with UTC persistence, future-time validation, state-preserving server actions, automatic-but-editable slugs, compact per-service downtime controls, English/Italian rich-text editors with headings, sizes and tables, list-focused modal workflows, complete base-record editing, and separate incident timeline or maintenance status updates. Event mutations, service-link changes, uptime recalculation, audit entries, and notification outbox inserts commit atomically.
 
-Subscriber administration now includes search, channel/status filters, pagination, notification-preference editing, and permanent deletion. Telegram subscriptions retain the chat ID for delivery while storing optional username/display metadata, and `/stop` or permanent blocked/not-found delivery failures delete the subscription. Localized HTML and plain-text emails use the configured branding and link to the confirmed unsubscription flow.
+Subscriber administration now includes search, channel/status filters, pagination, notification-preference editing, and permanent deletion. Telegram subscriptions retain the chat ID for delivery while storing optional username/display metadata, and `/stop` or permanent blocked/not-found delivery failures delete the subscription. Telegram event delivery uses Rich Messages to preserve supported editor formatting and falls back to plain text when necessary. Localized HTML and plain-text emails use the configured branding and link to the confirmed unsubscription flow.
 
 The next implementation phase should focus on:
 

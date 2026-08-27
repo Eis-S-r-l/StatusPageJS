@@ -2,7 +2,7 @@
 
 A bilingual, manually managed status-page system built as a Next.js modular monolith. The same application serves the public English/Italian status pages, the Cognito-protected administration area, APIs, bot webhooks, and a PostgreSQL-backed notification worker. Administrators can configure separate light and dark palettes and upload mode-specific logos and a favicon.
 
-Incident and maintenance dates are entered in the administrator's browser timezone and stored as UTC. The administration area provides full event editing, separate timeline/status updates, and restricted rich-text descriptions. Subscriber administration supports searching, notification preferences, permanent deletion, and Telegram profile names. Email subscribers can request a confirmed unsubscription from the public status page, and all notification emails include a link to that flow.
+Incident and maintenance dates are entered in the administrator's browser timezone and stored as UTC. The administration area provides full event editing, automatic-but-editable slugs, compact per-service downtime selection, separate timeline/status updates, and sanitized rich-text descriptions with headings, text sizes, lists, links, and tables. Subscriber administration supports searching, notification preferences, permanent deletion, and Telegram profile names. Email subscribers can request a confirmed unsubscription from the public status page, and all notification emails include a link to that flow.
 
 The product decisions and delivery plan are recorded in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
@@ -194,6 +194,8 @@ The webhook URL must be publicly reachable over HTTPS; `localhost` cannot receiv
 Visitors can subscribe through the public-page Telegram link or by sending `/start en` or `/start it`. They can unsubscribe with `/stop`. The application stores the Telegram chat ID and selected language in PostgreSQL; the worker uses that chat ID for published incident and maintenance notifications. Telegram bots cannot initiate a conversation, so each subscriber must first open the bot and press Start.
 
 Telegram usernames are optional and may change. The application stores the chat ID as the delivery identity, records the username/display name received by the webhook, and lets an administrator refresh an existing Telegram profile with the Bot API. `/stop` and permanent Telegram delivery errors remove the subscription and its queued jobs.
+
+Event notifications use Telegram Rich Messages when formatted content is available, preserving supported headings, emphasis, lists, links, and tables. If Telegram rejects a rich payload, the worker retries that delivery as a plain-text message.
 
 ## Email subscriptions
 

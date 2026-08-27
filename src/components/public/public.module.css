@@ -59,9 +59,6 @@
 .outage { background: var(--color-danger); }
 .maintenance { background: var(--color-primary); }
 .historyLabels { display: flex; justify-content: space-between; margin-top: 6px; color: var(--color-muted); font-size: .66rem; }
-.disclosure { margin-top: 16px; display: flex; gap: 10px; padding: 14px 16px; border-radius: 10px; color: var(--color-muted); background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)); font-size: .78rem; line-height: 1.5; }
-.disclosure svg { flex: 0 0 auto; margin-top: 1px; }
-.disclosure p { margin: 0; }
 .eventList { display: grid; gap: 12px; }
 .eventCard { padding: 23px 24px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); }
 .eventTopline, .eventFooter, .timelineMeta { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
@@ -79,6 +76,11 @@
 .richText > :last-child { margin-bottom: 0; }
 .richText a { color: var(--color-primary); text-underline-offset: 3px; }
 .richText ul, .richText ol { padding-left: 1.35rem; }
+.richText h2, .richText h3, .richText h4 { margin: 1.1em 0 .45em; color: var(--color-text); font-family: var(--font-display), sans-serif; line-height: 1.25; }
+.richText h2 { font-size: 1.45rem; } .richText h3 { font-size: 1.2rem; } .richText h4 { font-size: 1rem; }
+.richText table { width: 100%; margin: 1rem 0; border-collapse: collapse; overflow-wrap: anywhere; }
+.richText th, .richText td { padding: 8px 10px; border: 1px solid var(--color-border); text-align: left; vertical-align: top; }
+.richText th { color: var(--color-text); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
 .eventFooter { margin-top: 18px; color: var(--color-muted); font-size: .73rem; }
 .eventFooter a { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); text-decoration: none; font-weight: 750; white-space: nowrap; }
 .empty { display: flex; align-items: center; gap: 14px; padding: 22px; border: 1px dashed var(--color-border); border-radius: 14px; color: var(--color-primary); background: color-mix(in srgb, var(--color-surface) 80%, transparent); }

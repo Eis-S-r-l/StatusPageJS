@@ -29,13 +29,19 @@
 .full { grid-column: 1 / -1; }
 .field { display: grid; gap: 7px; color: var(--color-muted); font-size: .78rem; font-weight: 650; }
 .field input, .field textarea, .field select { width: 100%; border: 1px solid var(--color-border); border-radius: 9px; padding: 10px 11px; background: var(--color-surface); color: var(--color-text); font: 400 .9rem var(--font-body), sans-serif; }
+.field input[type="checkbox"] { width: auto; padding: 0; }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--color-primary); outline: 3px solid color-mix(in srgb, var(--color-primary) 16%, transparent); }
 .field textarea { min-height: 88px; resize: vertical; }
 .checks { display: flex; flex-wrap: wrap; gap: 10px; }
 .check { display: flex; align-items: center; gap: 7px; padding: 9px 11px; border: 1px solid var(--color-border); border-radius: 9px; font-size: .8rem; }
-.serviceChecks { display: grid; gap: 8px; }
-.serviceCheck { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr); gap: 8px; }
-.serviceCheck .check:has(input:disabled) { opacity: .55; }
+.serviceChecks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin-top: 3px; }
+.serviceCheck { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface); }
+.serviceCheck[data-selected] { border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)); }
+.serviceName, .downtimeChoice { min-width: 0; display: flex; align-items: center; gap: 7px; font-size: .8rem; cursor: pointer; }
+.serviceName { flex: 1 1 auto; color: var(--color-text); font-weight: 700; }
+.serviceName span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.downtimeChoice { flex: 0 0 auto; color: var(--color-muted); font-size: .73rem; font-weight: 600; }
+.downtimeChoice:has(input:disabled) { opacity: .48; cursor: not-allowed; }
 .button { border: 0; border-radius: 9px; padding: 11px 16px; background: var(--color-primary); color: var(--color-primary-text); cursor: pointer; font-weight: 700; }
 .button:hover { background: var(--color-primary); }
 .dangerButton { border: 0; background: transparent; color: var(--color-danger); text-decoration: underline; cursor: pointer; font-size: .76rem; }
@@ -53,12 +59,20 @@
 .richField { grid-column: 1 / -1; color: var(--color-muted); font-size: .78rem; font-weight: 650; }
 .richLabel { display: block; margin-bottom: 7px; }
 .richToolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border: 1px solid var(--color-border); border-bottom: 0; border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--color-primary) 4%, var(--color-background)); }
-.richToolbar button { min-height: 30px; padding: 4px 9px; border: 1px solid transparent; border-radius: 6px; color: var(--color-text); background: transparent; cursor: pointer; }
+.richToolbar button, .richToolbar select { min-height: 30px; padding: 4px 9px; border: 1px solid transparent; border-radius: 6px; color: var(--color-text); background: transparent; cursor: pointer; font: inherit; font-size: .74rem; }
+.richToolbar select { border-color: var(--color-border); background: var(--color-surface); }
 .richToolbar button[aria-pressed="true"] { border-color: var(--color-border); background: var(--color-surface); }
+.richToolbar button:disabled { opacity: .42; cursor: not-allowed; }
+.toolbarDivider { width: 1px; min-height: 26px; margin-inline: 2px; background: var(--color-border); }
 .richEditor { min-height: 110px; padding: 10px 11px; border: 1px solid var(--color-border); border-radius: 0 0 9px 9px; color: var(--color-text); background: var(--color-surface); font: 400 .9rem var(--font-body), sans-serif; }
 .richEditor:focus { border-color: var(--color-primary); outline: 3px solid color-mix(in srgb, var(--color-primary) 16%, transparent); }
 .richEditor p { margin: 0 0 .65em; }
 .richEditor p:last-child { margin-bottom: 0; }
+.richEditor h2, .richEditor h3, .richEditor h4 { margin: .75em 0 .35em; color: var(--color-text); line-height: 1.25; }
+.richEditor h2 { font-size: 1.45rem; } .richEditor h3 { font-size: 1.2rem; } .richEditor h4 { font-size: 1rem; }
+.richEditor table { width: 100%; margin: .7rem 0; border-collapse: collapse; }
+.richEditor th, .richEditor td { min-width: 70px; padding: 7px 9px; border: 1px solid var(--color-border); text-align: left; vertical-align: top; }
+.richEditor th { background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
 .inlineError, .inlineSuccess { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-radius: 8px; color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface)); font-size: .78rem; }
 .inlineSuccess { color: var(--color-success); background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface)); }
 .list { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-border); }
@@ -107,4 +121,4 @@
 .pagination a { color: var(--color-primary); font-weight: 700; text-decoration: none; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
 @media (max-width: 980px) { .appearanceGrid, .assetGrid { grid-template-columns: 1fr; } }
-@media (max-width: 680px) { .frame { display: block; } .sidebar { position: static; width: 100%; height: auto; padding: 16px; } .brand { padding-bottom: 14px; } .nav { display: flex; overflow-x: auto; } .nav a { flex: 0 0 auto; } .sidebarFoot { display: none; } .content { padding: 26px 18px 50px; } .form, .compactForm, .colorGrid, .subscriberFilters, .serviceCheck { grid-template-columns: 1fr; } .full, .richField { grid-column: auto; } .eventRow, .subscriberRow { display: grid; } .eventActions { min-width: 0; width: 100%; } .rowActions { justify-content: flex-start; } .saveAppearance { width: 100%; } }
+@media (max-width: 680px) { .frame { display: block; } .sidebar { position: static; width: 100%; height: auto; padding: 16px; } .brand { padding-bottom: 14px; } .nav { display: flex; overflow-x: auto; } .nav a { flex: 0 0 auto; } .sidebarFoot { display: none; } .content { padding: 26px 18px 50px; } .form, .compactForm, .colorGrid, .subscriberFilters, .serviceChecks { grid-template-columns: 1fr; } .full, .richField { grid-column: auto; } .eventRow, .subscriberRow { display: grid; } .eventActions { min-width: 0; width: 100%; } .rowActions { justify-content: flex-start; } .saveAppearance { width: 100%; } }
