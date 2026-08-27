@@ -67,9 +67,34 @@ Before production launch:
 - Complete the Cloudflare Turnstile setup described below so the public email forms are enabled.
 - Verify the email-sending domain in Amazon SES and request production access.
 - Complete the Telegram setup below and register the optional Webex webhook using a strong webhook secret.
-- Set the public Telegram bot username and optional Webex bot email so visitors can open the bot onboarding flow from the status page. Telegram accepts `/start en`, `/start it`, and `/stop`; Webex accepts `subscribe en`, `subscribe it`, and `stop`.
+- Set the public Telegram bot username and optional Webex bot email so visitors can open the bot onboarding flow from the status page. Telegram accepts `/start en`, `/start it`, and `/stop`; Webex accepts `subscribe en`, `subscribe it`, and `stop` in direct conversations, or the same commands preceded by an `@` mention in group spaces.
 - Replace the default PostgreSQL password.
 - Configure encrypted off-VM backups for both PostgreSQL and the `branding_data` volume, then test a complete restore.
+
+### Delete all testing data before production
+
+This factory-reset procedure permanently removes all application data stored by the Compose deployment:
+
+- The complete PostgreSQL database, including services, incidents, maintenance, subscribers, settings, audit records, uptime calculations, and notification history.
+- Every uploaded light/dark logo and favicon in the `branding_data` volume.
+
+It does not remove the repository, `.env` configuration, Docker images, Nginx configuration, certificates, or backup files stored outside the Compose volumes. Back up any data that must be retained before continuing.
+
+From the repository directory, stop the application and remove its containers, network, PostgreSQL volume, branding volume, and any orphaned services:
+
+```bash
+docker compose down --volumes --remove-orphans
+```
+
+This action is irreversible. Start the application again and verify that the migration completed successfully:
+
+```bash
+docker compose up --build -d
+docker compose logs --no-color migrate
+docker compose ps
+```
+
+PostgreSQL will initialize a new empty database, the migration container will recreate the complete schema, and the application will start without any uploaded branding assets. The application can then be configured with production data through the administration area.
 
 ## AWS Cognito setup
 
@@ -291,7 +316,19 @@ Do not create a duplicate if a webhook already exists for this application. Upda
 
 A `401` response from `/api/webex/webhook` means the secret registered with Webex does not match `WEBEX_WEBHOOK_SECRET`. A `503` response means the secret is missing from the web container. Webex may disable a webhook after repeated unsuccessful deliveries, so resolve the error and reactivate the webhook before testing again.
 
-Visitors can open the bot from the public status page when `WEBEX_BOT_EMAIL` is configured. They can send `subscribe en` or `subscribe it` to enable notifications and `stop` to unsubscribe. When a visitor subscribes, the application records the sender email supplied by the message and attempts to retrieve their Webex display name through the People API. Profile lookup failure does not block the subscription; the email remains searchable in the admin subscriber view. An existing Webex subscriber can send the subscribe command again to refresh these details.
+Visitors can open the bot from the public status page when `WEBEX_BOT_EMAIL` is configured. In a direct conversation they can send `subscribe en` or `subscribe it` to enable notifications and `stop` to unsubscribe.
+
+Webex only delivers group-space messages to a bot when the bot is explicitly mentioned. In a group space, select the bot from the mention menu and send commands in this form:
+
+```text
+@EIS subscribe en
+@EIS subscribe it
+@EIS stop
+```
+
+Replace `@EIS` with the displayed mention for the configured bot. A plain `subscribe en` message in a group space never reaches the bot and therefore cannot produce a reply. The application removes the displayed bot-name prefix from mentioned messages before parsing the command.
+
+When a visitor subscribes, the application records the sender email supplied by the message and attempts to retrieve their Webex display name through the People API. Profile lookup failure does not block the subscription; the email remains searchable in the admin subscriber view. An existing Webex subscriber can send the appropriate subscribe command again to refresh these details. A group subscription belongs to the space, so notifications are posted to that shared space rather than privately to the person who entered the command.
 
 ### Test and troubleshoot delivery
 
