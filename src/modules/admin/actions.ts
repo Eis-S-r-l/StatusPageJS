@@ -16,6 +16,7 @@ import {
   incidentServices,
   maintenances,
   maintenanceServices,
+  notificationJobs,
   services,
   subscriptions,
   systemSettings,
@@ -120,6 +121,37 @@ export async function refreshTelegramSubscriber(form: FormData) {
     const { id } = z.object({ id: z.string().uuid() }).parse(values(form));
     await refreshTelegramProfile(id);
     await audit(admin.subject, "refresh_profile", "subscription", id);
+  } catch (error) { finish(path, error); }
+  finish(path);
+}
+
+export async function queueWebexTestNotification(form: FormData) {
+  const admin = await requireAdmin();
+  const path = "/admin/subscribers";
+  try {
+    const { id } = z.object({ id: z.string().uuid() }).parse(values(form));
+    const db = getDb();
+    const [subscriber] = await db.select({
+      id: subscriptions.id, channel: subscriptions.channel, language: subscriptions.language,
+      confirmedAt: subscriptions.confirmedAt, unsubscribedAt: subscriptions.unsubscribedAt,
+    }).from(subscriptions).where(eq(subscriptions.id, id)).limit(1);
+    if (!subscriber || subscriber.channel !== "webex") throw new SafeActionError("That Webex subscriber no longer exists.");
+    if (!subscriber.confirmedAt || subscriber.unsubscribedAt) throw new SafeActionError("That Webex subscription is not active.");
+    const italian = subscriber.language === "it";
+    const jobId = randomUUID();
+    await db.transaction(async (tx) => {
+      await tx.insert(notificationJobs).values({
+        id: jobId, subscriptionId: subscriber.id, type: "incident_update",
+        idempotencyKey: `webex-test:${subscriber.id}:${jobId}`,
+        payload: {
+          subject: italian ? "Test notifiche status page" : "Status page notification test",
+          text: italian
+            ? "Questo è un messaggio di test inviato da un amministratore della status page. Se lo ricevi, il worker e il bot Webex sono configurati correttamente."
+            : "This is a test message sent by a status page administrator. If you receive it, the worker and Webex bot are configured correctly.",
+        },
+      });
+      await tx.insert(auditLogs).values({ actorSubject: admin.subject, action: "queue_test_notification", entityType: "subscription", entityId: subscriber.id, after: { channel: "webex", jobId } });
+    });
   } catch (error) { finish(path, error); }
   finish(path);
 }

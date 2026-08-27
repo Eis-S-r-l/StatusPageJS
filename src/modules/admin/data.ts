@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -130,6 +130,20 @@ export const loadSubscribers = (input: SubscriberQuery = {}) => safely(async () 
     db.select({ count: sql<number>`count(*)::int` }).from(subscriptions).where(where),
     db.select().from(subscriptions).where(where).orderBy(desc(subscriptions.createdAt)).limit(pageSize).offset((page - 1) * pageSize),
   ]);
+  const deliveryRows = rows.length ? await db.selectDistinctOn([notificationJobs.subscriptionId], {
+    subscriptionId: notificationJobs.subscriptionId,
+    type: notificationJobs.type,
+    status: notificationJobs.status,
+    attemptCount: notificationJobs.attemptCount,
+    lastError: notificationJobs.lastError,
+    sentAt: notificationJobs.sentAt,
+    updatedAt: notificationJobs.updatedAt,
+  }).from(notificationJobs).where(inArray(notificationJobs.subscriptionId, rows.map((row) => row.id)))
+    .orderBy(notificationJobs.subscriptionId, desc(notificationJobs.updatedAt)) : [];
+  const latestDelivery = new Map<string, (typeof deliveryRows)[number]>();
+  for (const delivery of deliveryRows) {
+    if (!latestDelivery.has(delivery.subscriptionId)) latestDelivery.set(delivery.subscriptionId, delivery);
+  }
   const total = countRow?.count ?? 0;
-  return { rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) };
+  return { rows: rows.map((row) => ({ ...row, latestDelivery: latestDelivery.get(row.id) ?? null })), total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) };
 });

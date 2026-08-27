@@ -3,18 +3,34 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { webexErrorDetail } from "@/modules/integrations/webex";
 import { parseBotCommand } from "@/modules/subscriptions/bot-command";
 import { subscribeBot, unsubscribeBot } from "@/modules/subscriptions/bot-service";
+import { webexSubscriberProfile } from "@/modules/subscriptions/webex-profile";
 
 const eventSchema = z.object({ data: z.object({ id: z.string().min(1), roomId: z.string().min(1) }) });
-const messageSchema = z.object({ text: z.string().optional(), personEmail: z.string().optional() });
+const messageSchema = z.object({ text: z.string().optional(), personId: z.string().optional(), personEmail: z.string().optional() });
+const personSchema = z.object({
+  emails: z.array(z.string()).optional(), displayName: z.string().optional(), nickName: z.string().optional(),
+  firstName: z.string().optional(), lastName: z.string().optional(),
+});
 
 async function webexRequest(path: string, init?: RequestInit) {
   const token = process.env.WEBEX_BOT_TOKEN;
   if (!token) throw new Error("Webex is not configured");
   const response = await fetch(`https://webexapis.com/v1${path}`, { ...init, headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...init?.headers }, signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`Webex rejected the request (${response.status})`);
+  if (!response.ok) throw new Error(`Webex rejected the request (${response.status}): ${await webexErrorDetail(response)}`);
   return response;
+}
+
+async function loadPersonProfile(personId?: string) {
+  if (!personId) return null;
+  try {
+    return personSchema.parse(await (await webexRequest(`/people/${encodeURIComponent(personId)}`)).json());
+  } catch (error) {
+    console.warn("Webex subscriber profile lookup failed; continuing with message identity", error instanceof Error ? error.message : "Unknown error");
+    return null;
+  }
 }
 
 async function reply(roomId: string, text: string) {
@@ -36,7 +52,8 @@ export async function POST(request: NextRequest) {
     if (process.env.WEBEX_BOT_EMAIL && message.personEmail?.toLowerCase() === process.env.WEBEX_BOT_EMAIL.toLowerCase()) return new NextResponse(null, { status: 204 });
     const command = parseBotCommand(message.text);
     if (command.action === "subscribe") {
-      await subscribeBot({ channel: "webex", destination: event.data.roomId, language: command.language });
+      const profile = webexSubscriberProfile(message, await loadPersonProfile(message.personId));
+      await subscribeBot({ channel: "webex", destination: event.data.roomId, language: command.language, ...profile });
       await reply(event.data.roomId, command.language === "it" ? "Iscrizione confermata. Scrivi ‘stop’ per annullare." : "Subscription confirmed. Send ‘stop’ to unsubscribe.");
     } else if (command.action === "unsubscribe") {
       await unsubscribeBot("webex", event.data.roomId);

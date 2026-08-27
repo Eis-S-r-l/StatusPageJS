@@ -220,6 +220,107 @@ Telegram usernames are optional and may change. The application stores the chat 
 
 Event notifications use Telegram Rich Messages when formatted content is available, preserving supported headings, emphasis, lists, links, and tables. If Telegram rejects a rich payload, the worker retries that delivery as a plain-text message.
 
+## Webex bot setup
+
+### Create and configure the bot
+
+1. Open [Webex for Developers](https://developer.webex.com/), sign in, and create a bot under **My Apps**.
+2. Save the permanent access token shown for the bot as a secret. Do not use the short-lived personal developer access token from the Webex API documentation. The web process uses the bot token to read and reply to incoming messages, and the worker uses the same token to send status notifications.
+3. Record the bot email address so the application can ignore messages sent by the bot itself.
+4. Generate an independent webhook secret locally:
+
+```bash
+openssl rand -hex 32
+```
+
+Add the Webex values to `.env`:
+
+```env
+WEBEX_BOT_TOKEN=replace-with-the-webex-bot-token
+WEBEX_WEBHOOK_SECRET=replace-with-the-generated-webhook-secret
+WEBEX_BOT_EMAIL=eis-status@example.com
+```
+
+`WEBEX_WEBHOOK_SECRET` is a shared secret chosen by you; Webex does not generate it. When the webhook is registered with the same secret, Webex signs each request body and sends the HMAC-SHA1 signature in `X-Spark-Signature`. The application verifies that signature before reading or acting on the message. The value in `.env` and the value registered with Webex must match exactly.
+
+After changing the production `.env`, recreate both processes so the web handler and notification worker receive the credentials:
+
+```bash
+docker compose up -d --force-recreate web worker
+```
+
+### Register the webhook
+
+The application does not register the Webex webhook automatically. The target must be publicly reachable over HTTPS. After the application is running, load `.env` into the current shell:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+Register a webhook for newly created messages. This command uses `jq` to construct the JSON without placing the webhook secret directly in the command arguments:
+
+```bash
+jq -n \
+  --arg target "${APP_URL%/}/api/webex/webhook" \
+  '{
+    name: "EIS Status Page Bot",
+    targetUrl: $target,
+    resource: "messages",
+    event: "created",
+    secret: env.WEBEX_WEBHOOK_SECRET
+  }' |
+curl --fail-with-body \
+  --request POST \
+  "https://webexapis.com/v1/webhooks" \
+  --header "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
+  --header "Content-Type: application/json" \
+  --data-binary @-
+```
+
+List the bot's registered webhooks and confirm that the new webhook is active and points to the expected URL:
+
+```bash
+curl --fail-with-body \
+  "https://webexapis.com/v1/webhooks" \
+  --header "Authorization: Bearer ${WEBEX_BOT_TOKEN}"
+```
+
+Do not create a duplicate if a webhook already exists for this application. Update the existing webhook through Webex's **Update a Webhook** API with the same target and secret, or delete and recreate it. Changing only `WEBEX_WEBHOOK_SECRET` in `.env` causes the old webhook to fail signature validation.
+
+A `401` response from `/api/webex/webhook` means the secret registered with Webex does not match `WEBEX_WEBHOOK_SECRET`. A `503` response means the secret is missing from the web container. Webex may disable a webhook after repeated unsuccessful deliveries, so resolve the error and reactivate the webhook before testing again.
+
+Visitors can open the bot from the public status page when `WEBEX_BOT_EMAIL` is configured. They can send `subscribe en` or `subscribe it` to enable notifications and `stop` to unsubscribe. When a visitor subscribes, the application records the sender email supplied by the message and attempts to retrieve their Webex display name through the People API. Profile lookup failure does not block the subscription; the email remains searchable in the admin subscriber view. An existing Webex subscriber can send the subscribe command again to refresh these details.
+
+### Test and troubleshoot delivery
+
+The subscription reply is sent by the `web` container, while incident and maintenance notifications are sent asynchronously by the `worker` container. Receiving the subscription reply therefore does not prove that the worker has the Webex token. After changing `.env`, always recreate both containers as shown above.
+
+In **Admin → Subscribers**, open a Webex subscriber and select **Queue Webex test notification**. This uses the same database queue, worker, token, and Webex Messages API path as a real status update. Refresh the subscriber page after a few seconds: it now shows whether the latest notification is waiting, retrying, sent, or failed, along with the detailed Webex error and tracking ID when Webex supplies one.
+
+Check that both containers received a token without printing the secret:
+
+```bash
+docker compose exec -T web node -e 'console.log(process.env.WEBEX_BOT_TOKEN ? "WEBEX_BOT_TOKEN=SET" : "WEBEX_BOT_TOKEN=MISSING")'
+docker compose exec -T worker node -e 'console.log(process.env.WEBEX_BOT_TOKEN ? "WEBEX_BOT_TOKEN=SET" : "WEBEX_BOT_TOKEN=MISSING")'
+```
+
+Then inspect worker delivery errors:
+
+```bash
+docker compose logs --no-color --tail=200 worker
+```
+
+Common results are:
+
+- `Webex is not configured`: `WEBEX_BOT_TOKEN` is absent from the worker container. Recreate `web` and `worker`.
+- HTTP `401`: the token is invalid, expired, or is a short-lived personal developer token instead of the bot token.
+- HTTP `403` or `404`: the bot cannot access the stored room. Webex requires the sending bot to be a member of the target room; ask the user to start a direct conversation with the configured bot and subscribe again.
+- HTTP `429` or a server error: the worker retains the job and retries it with exponential backoff.
+
+The worker logs and admin page include the Webex response reason and tracking ID, but never log the bot token. If a profile name is missing while delivery works, the People lookup was unavailable; the sender email from the Webex message is still stored and searchable.
+
 ## Email subscriptions
 
 The public English and Italian pages provide both subscription and unsubscription forms. Unsubscription is confirmed through a one-time email link; the confirmed action permanently deletes the subscription. Confirmation links return a localized human-readable result page rather than JSON.

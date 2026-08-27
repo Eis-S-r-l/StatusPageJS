@@ -41,6 +41,11 @@ export async function processNotificationBatch(limit = 20, now = new Date()): Pr
       await db.update(notificationJobs).set({ status: "sent", sentAt: new Date(), nextRetryAt: null, lastError: null, updatedAt: new Date() }).where(eq(notificationJobs.id, job.id));
       sent++;
     } catch (error) {
+      const deliveryError = safeError(error);
+      console.error("Notification delivery failed", {
+        jobId: job.id, channel: job.channel, attempt: job.attemptCount + 1,
+        permanent: error instanceof PermanentDeliveryError, error: deliveryError,
+      });
       if (error instanceof PermanentDeliveryError) {
         await db.delete(subscriptions).where(eq(subscriptions.id, job.subscriptionId));
         failed++;
@@ -49,7 +54,7 @@ export async function processNotificationBatch(limit = 20, now = new Date()): Pr
       const attempts = job.attemptCount + 1;
       const terminal = attempts >= MAX_ATTEMPTS;
       const retryDelay = Math.min(6 * 60 * 60_000, 30_000 * 2 ** Math.max(0, attempts - 1));
-      await db.update(notificationJobs).set({ status: terminal ? "failed" : "pending", nextRetryAt: terminal ? null : new Date(Date.now() + retryDelay), lastError: safeError(error), updatedAt: new Date() }).where(eq(notificationJobs.id, job.id));
+      await db.update(notificationJobs).set({ status: terminal ? "failed" : "pending", nextRetryAt: terminal ? null : new Date(Date.now() + retryDelay), lastError: deliveryError, updatedAt: new Date() }).where(eq(notificationJobs.id, job.id));
       failed++;
     }
   }

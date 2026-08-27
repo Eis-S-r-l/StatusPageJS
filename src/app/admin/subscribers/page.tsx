@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { deleteSubscriber, refreshTelegramSubscriber, updateSubscriber } from "@/modules/admin/actions";
+import { deleteSubscriber, queueWebexTestNotification, refreshTelegramSubscriber, updateSubscriber } from "@/modules/admin/actions";
 import { loadSubscribers } from "@/modules/admin/data";
 import { requireAdmin } from "@/modules/auth/guard";
 import { Notice, PageHeader, Unavailable } from "../_components";
@@ -18,6 +18,18 @@ function pageHref(query: Query, page: number): string {
   return `/admin/subscribers?${params}`;
 }
 
+function deliveryLabel(delivery: { status: string; attemptCount: number; sentAt: Date | null; updatedAt: Date }): string {
+  const time = (delivery.sentAt ?? delivery.updatedAt).toLocaleString("en-GB", {
+    timeZone: process.env.APP_TIMEZONE ?? "Europe/Rome", dateStyle: "short", timeStyle: "short",
+  });
+  if (delivery.status === "sent") return `Last notification sent ${time}`;
+  if (delivery.status === "processing") return `Notification processing · attempt ${delivery.attemptCount}`;
+  if (delivery.status === "pending" && delivery.attemptCount > 0) return `Notification retry scheduled · attempt ${delivery.attemptCount}`;
+  if (delivery.status === "pending") return "Notification waiting for worker";
+  if (delivery.status === "failed") return `Notification failed after ${delivery.attemptCount} attempts · ${time}`;
+  return `Latest notification ${delivery.status} · ${time}`;
+}
+
 export default async function SubscribersPage({ searchParams }: { searchParams: Promise<Query> }) {
   await requireAdmin();
   const query = await searchParams;
@@ -30,7 +42,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
     {!result.available ? <Unavailable message={result.message} /> : <>
       <section className={styles.panel}>
         <form className={styles.subscriberFilters} method="get">
-          <label className={styles.field}>Search<input name="q" defaultValue={query.q} placeholder="Email, Telegram name, username, or chat ID" /></label>
+          <label className={styles.field}>Search<input name="q" defaultValue={query.q} placeholder="Email, Webex or Telegram name, username, room, or chat ID" /></label>
           <label className={styles.field}>Channel<select name="channel" defaultValue={channel}><option value="all">All channels</option><option value="email">Email</option><option value="telegram">Telegram</option><option value="webex">Webex</option></select></label>
           <label className={styles.field}>Status<select name="status" defaultValue={status}><option value="all">All statuses</option><option value="confirmed">Confirmed</option><option value="pending">Awaiting confirmation</option></select></label>
           <button className={styles.button} type="submit">Filter</button>
@@ -39,12 +51,26 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
       <section className={styles.panel}>
         <p className={styles.panelIntro}>{result.data.total} subscription{result.data.total === 1 ? "" : "s"}</p>
         <div className={styles.list}>{result.data.rows.length ? result.data.rows.map((item) => {
-          const identity = item.channel === "telegram" ? item.channelDisplayName || (item.channelUsername ? `@${item.channelUsername}` : null) : null;
+          const identity = item.channel === "telegram"
+            ? item.channelDisplayName || (item.channelUsername ? `@${item.channelUsername}` : null)
+            : item.channel === "webex" ? item.channelDisplayName || item.channelUsername : null;
+          const destinationDetails = item.channel === "telegram" && identity
+            ? `${item.channelUsername ? `@${item.channelUsername} · ` : ""}Chat ID ${item.destination}`
+            : item.channel === "webex" && identity
+              ? `${item.channelUsername && item.channelUsername !== identity ? `${item.channelUsername} · ` : ""}Room ID ${item.destination}`
+              : null;
           return <div className={`${styles.row} ${styles.subscriberRow}`} key={item.id}>
-            <div className={styles.subscriberIdentity}><strong>{identity ?? item.destination}</strong>{identity && <small>{item.channelUsername ? `@${item.channelUsername} · ` : ""}Chat ID {item.destination}</small>}<small>{item.channel} · {item.unsubscribedAt ? "Unsubscribed (legacy)" : item.confirmedAt ? "Confirmed" : "Awaiting confirmation"}</small></div>
+            <div className={styles.subscriberIdentity}>
+              <strong>{identity ?? item.destination}</strong>
+              {destinationDetails && <small>{destinationDetails}</small>}
+              <small>{item.channel} · {item.unsubscribedAt ? "Unsubscribed (legacy)" : item.confirmedAt ? "Confirmed" : "Awaiting confirmation"}</small>
+              {item.latestDelivery && <small>{deliveryLabel(item.latestDelivery)}</small>}
+              {item.latestDelivery?.lastError && <small className={styles.deliveryError}>{item.latestDelivery.lastError}</small>}
+            </div>
             <details className={styles.eventActions}><summary>Edit</summary>
               <form className={styles.compactForm} action={updateSubscriber}><input type="hidden" name="id" value={item.id} /><label className={styles.field}>Language<select name="language" defaultValue={item.language}><option value="en">English</option><option value="it">Italian</option></select></label><div className={styles.checks}><label className={styles.check}><input name="receiveIncidents" type="checkbox" defaultChecked={item.receiveIncidents} /> Incidents</label><label className={styles.check}><input name="receiveMaintenance" type="checkbox" defaultChecked={item.receiveMaintenance} /> Maintenance</label></div><button className={styles.button} type="submit">Save preferences</button></form>
               {item.channel === "telegram" && <form action={refreshTelegramSubscriber}><input type="hidden" name="id" value={item.id} /><button className={styles.dangerButton} type="submit">Refresh Telegram profile</button></form>}
+              {item.channel === "webex" && <form action={queueWebexTestNotification}><input type="hidden" name="id" value={item.id} /><button className={styles.secondaryButton} type="submit">Queue Webex test notification</button></form>}
               <ConfirmDelete action={deleteSubscriber} id={item.id} className={styles.dangerButton} />
             </details>
           </div>;

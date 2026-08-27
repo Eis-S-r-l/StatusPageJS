@@ -117,6 +117,7 @@
 .subscriberRow { align-items: flex-start; }
 .subscriberIdentity { min-width: 0; overflow-wrap: anywhere; }
 .subscriberIdentity small { display: block; margin-top: 4px; }
+.subscriberIdentity .deliveryError { max-width: 720px; color: var(--color-danger); font-weight: 650; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 20px; color: var(--color-muted); font-size: .82rem; }
 .pagination a { color: var(--color-primary); font-weight: 700; text-decoration: none; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }

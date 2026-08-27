@@ -1,6 +1,8 @@
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { z } from "zod";
 
+import { createWebexMessagePayload, webexErrorDetail } from "../integrations/webex";
+
 const payloadSchema = z.object({
   subject: z.string().min(1).max(998), text: z.string().min(1), html: z.string().optional(), telegramHtml: z.string().max(32768).optional(),
 });
@@ -76,6 +78,6 @@ export async function deliver(target: DeliveryTarget): Promise<void> {
   }
   const token = process.env.WEBEX_BOT_TOKEN;
   if (!token) throw new Error("Webex is not configured");
-  const response = await fetch("https://webexapis.com/v1/messages", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ roomId: target.destination, text: content.text }), signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`Webex rejected delivery (${response.status})`);
+  const response = await fetch("https://webexapis.com/v1/messages", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(createWebexMessagePayload(target.destination, content.text)), signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error(`Webex rejected delivery (${response.status}): ${await webexErrorDetail(response)}`);
 }
