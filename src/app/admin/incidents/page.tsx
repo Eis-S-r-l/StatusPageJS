@@ -11,6 +11,7 @@ export default async function IncidentsPage() {
 
   const items = records.data.map((item) => ({
     ...item,
+    statusEffectiveAt: item.statusEffectiveAt.toISOString(),
     startedAt: item.startedAt.toISOString(),
     resolvedAt: item.resolvedAt?.toISOString() ?? null,
     publishedAt: item.publishedAt?.toISOString() ?? null,

@@ -127,6 +127,8 @@ export const incidents = pgTable(
     descriptionEn: text("description_en").default("").notNull(),
     descriptionIt: text("description_it").default("").notNull(),
     status: incidentStatusEnum("status").default("investigating").notNull(),
+    statusEffectiveAt: timestamp("status_effective_at", { withTimezone: true })
+      .notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     isPublished: boolean("is_published").default(false).notNull(),
@@ -207,6 +209,8 @@ export const maintenances = pgTable(
     descriptionEn: text("description_en").default("").notNull(),
     descriptionIt: text("description_it").default("").notNull(),
     status: maintenanceStatusEnum("status").default("scheduled").notNull(),
+    statusEffectiveAt: timestamp("status_effective_at", { withTimezone: true })
+      .notNull(),
     scheduledStartAt: timestamp("scheduled_start_at", {
       withTimezone: true,
     }).notNull(),
@@ -241,6 +245,28 @@ export const maintenances = pgTable(
     check(
       "maintenances_published_timestamp",
       sql`not ${table.isPublished} or ${table.publishedAt} is not null`,
+    ),
+  ],
+);
+
+export const maintenanceUpdates = pgTable(
+  "maintenance_updates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    maintenanceId: uuid("maintenance_id")
+      .notNull()
+      .references(() => maintenances.id, { onDelete: "cascade" }),
+    status: maintenanceStatusEnum("status").notNull(),
+    messageEn: text("message_en").notNull(),
+    messageIt: text("message_it").notNull(),
+    effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("maintenance_updates_timeline_idx").on(
+      table.maintenanceId,
+      table.effectiveAt,
     ),
   ],
 );

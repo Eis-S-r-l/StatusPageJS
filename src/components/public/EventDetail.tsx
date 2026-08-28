@@ -29,7 +29,7 @@ export function EventDetail({ event, locale }: { event: StatusEvent; locale: Loc
         <section className={styles.timelineSection} aria-labelledby="timeline-title">
           <h2 id="timeline-title">{t.timeline}</h2>
           <ol className={styles.timeline}>
-            {event.timeline.map((entry) => <li key={entry.id}><span className={styles.timelineDot} aria-hidden="true" /><div><div className={styles.timelineMeta}><strong>{eventStateLabel(entry.state, t)}</strong><time dateTime={entry.publishedAt}>{formatDateTime(entry.publishedAt, locale)}</time></div><SafeRichText html={entry.message[locale]} className={styles.richText} /></div></li>)}
+            {event.timeline.map((entry) => <li key={entry.id}><span className={styles.timelineDot} aria-hidden="true" /><div><div className={styles.timelineMeta}><strong>{eventStateLabel(entry.state, t)}</strong><time dateTime={entry.effectiveAt}>{formatDateTime(entry.effectiveAt, locale)}</time></div><SafeRichText html={entry.message[locale]} className={styles.richText} /></div></li>)}
           </ol>
         </section>
       </article>

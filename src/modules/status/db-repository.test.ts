@@ -12,6 +12,7 @@ function baseModel(): StatusReadModel {
   return {
     now,
     uptimeIntervalDays: 45,
+    publicTimezone: "Europe/Rome",
     categories: [
       {
         id: "category-id",
@@ -87,7 +88,11 @@ describe("buildStatusSnapshot", () => {
     expect(first?.uptimePercentage).toBe("99.988%");
     expect(second?.uptimePercentage).toBe("N/A");
     expect(first?.state).toBe("outage");
-    expect(first?.history).toHaveLength(60);
+    expect(first?.history).toHaveLength(45);
+    expect(first?.history.at(-1)).toMatchObject({ date: "2026-08-26", state: "outage" });
+    expect(first?.history.at(-1)?.events).toEqual([
+      { kind: "incident", slug: "current-incident", title: { en: "Current incident", it: "Incidente corrente" }, impact: "outage" },
+    ]);
     expect(snapshot.overallState).toBe("outage");
     expect(snapshot.activeIncidents[0]?.affectedServices).toEqual([
       { id: "service-a", name: { en: "Service A", it: "Servizio A" } },
@@ -156,6 +161,10 @@ describe("buildStatusSnapshot", () => {
     expect(snapshot.categories[0]?.services.map((service) => service.state)).toEqual([
       "outage",
       "maintenance",
+    ]);
+    expect(snapshot.categories[0]?.services[0]?.history.at(-1)?.events.map((event) => event.impact)).toEqual([
+      "outage",
+      "degraded",
     ]);
     expect(snapshot.overallState).toBe("outage");
     expect(snapshot.upcomingMaintenance[0]?.affectedServices).toEqual([
@@ -232,5 +241,30 @@ describe("buildStatusSnapshot", () => {
     expect(buildStatusSnapshot(model).recentEvents[0]?.affectedServices).toEqual([
       { id: "retired-service", name: { en: "Retired service", it: "Servizio ritirato" } },
     ]);
+  });
+
+  it("aligns history length with the uptime interval and uses local calendar days across DST", () => {
+    const model = baseModel();
+    model.now = date("2026-03-30T12:00:00Z");
+    model.uptimeIntervalDays = 3;
+    model.incidents.push({
+      id: "dst-incident",
+      slug: "dst-incident",
+      titleEn: "Overnight incident",
+      titleIt: "Incidente notturno",
+      descriptionEn: "",
+      descriptionIt: "",
+      status: "resolved",
+      startedAt: date("2026-03-28T23:30:00Z"),
+      resolvedAt: date("2026-03-29T00:30:00Z"),
+      publishedAt: date("2026-03-28T23:30:00Z"),
+      updatedAt: date("2026-03-29T00:30:00Z"),
+    });
+    model.incidentAssociations.push({ eventId: "dst-incident", serviceId: "service-a-id", affectsUptime: false });
+
+    const history = buildStatusSnapshot(model).categories[0]!.services[0]!.history;
+
+    expect(history.map((day) => day.date)).toEqual(["2026-03-28", "2026-03-29", "2026-03-30"]);
+    expect(history.map((day) => day.state)).toEqual(["operational", "degraded", "operational"]);
   });
 });

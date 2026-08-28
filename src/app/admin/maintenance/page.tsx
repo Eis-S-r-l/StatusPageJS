@@ -11,6 +11,7 @@ export default async function MaintenancePage() {
 
   const items = records.data.map((item) => ({
     ...item,
+    statusEffectiveAt: item.statusEffectiveAt.toISOString(),
     scheduledStartAt: item.scheduledStartAt.toISOString(),
     scheduledEndAt: item.scheduledEndAt.toISOString(),
     actualStartAt: item.actualStartAt?.toISOString() ?? null,
@@ -19,6 +20,7 @@ export default async function MaintenancePage() {
     archivedAt: item.archivedAt?.toISOString() ?? null,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
+    updates: item.updates.map((update) => ({ id: update.id })),
   }));
   const current = items.filter((item) => item.status === "scheduled" || item.status === "in_progress");
   const currentIds = new Set(current.map((item) => item.id));

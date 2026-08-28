@@ -10,6 +10,7 @@ import { sortLocalizedByOrder } from "@/modules/status/ordering";
 import { EventCard } from "./EventCard";
 import { ServiceCategories, type ServiceCategoryContent } from "./ServiceCategories";
 import { ServiceStatusBadge } from "./ServiceStatusBadge";
+import { UptimeHistory } from "./UptimeHistory";
 import styles from "./public.module.css";
 
 export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds }: { snapshot: PublicStatusSnapshot; locale: Locale; title: string; collapsedCategoryIds: string[] }) {
@@ -25,10 +26,8 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
             <div><h4>{service.name[locale]}</h4><p>{service.description[locale]}</p><ServiceStatusBadge state={service.state} label={t.status[service.state]} /></div>
             <div className={styles.uptime}><strong>{service.uptimePercentage}</strong><span>{t.uptime}</span></div>
           </div>
-          <div className={styles.history} role="img" aria-label={`${service.name[locale]}: ${t.last60Days}, ${service.uptimePercentage} ${t.uptime}`}>
-            {service.history.map((state, index) => <i className={styles[state]} key={`${service.id}-${index}`} title={t.availability[state]} />)}
-          </div>
-          <div className={styles.historyLabels} aria-hidden="true"><span>{t.daysAgo}</span><span>{t.today}</span></div>
+          <UptimeHistory serviceName={service.name[locale]} days={service.history} locale={locale} labels={{ history: t.last60Days.replace("{days}", String(snapshot.uptimeIntervalDays)), noEvents: t.noDayEvents, events: t.dayEvents, states: t.status }} />
+          <div className={styles.historyLabels} aria-hidden="true"><span>{t.daysAgo.replace("{days}", String(snapshot.uptimeIntervalDays))}</span><span>{t.today}</span></div>
         </article>
       ))}
     </div>,

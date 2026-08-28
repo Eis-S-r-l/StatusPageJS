@@ -2,10 +2,12 @@ import type { Locale } from "@/modules/i18n/config";
 export type LocalizedText = Record<Locale, string>;
 export type ServiceState = "operational" | "degraded" | "outage" | "maintenance";
 export type DayState = ServiceState;
+export interface DayEvent { kind: "incident" | "maintenance"; slug: string; title: LocalizedText; impact: Exclude<ServiceState, "operational">; }
+export interface UptimeDay { date: string; state: DayState; events: DayEvent[]; }
 export type EventState = "investigating" | "identified" | "monitoring" | "resolved" | "scheduled" | "in_progress" | "completed" | "cancelled";
-export interface ServiceSummary { id: string; displayOrder: number; name: LocalizedText; description: LocalizedText; state: ServiceState; /** Persisted and maintained when uptime-affecting events change. */ uptimePercentage: string; history: DayState[]; }
+export interface ServiceSummary { id: string; displayOrder: number; name: LocalizedText; description: LocalizedText; state: ServiceState; /** Persisted and maintained when uptime-affecting events change. */ uptimePercentage: string; history: UptimeDay[]; }
 export interface ServiceCategory { id: string; displayOrder: number; name: LocalizedText; services: ServiceSummary[]; }
-export interface TimelineEntry { id: string; state: EventState; publishedAt: string; message: LocalizedText; }
+export interface TimelineEntry { id: string; state: EventState; effectiveAt: string; message: LocalizedText; }
 export interface AffectedService { id: string; name: LocalizedText; }
 export interface StatusEvent { kind: "incident" | "maintenance"; slug: string; title: LocalizedText; summary: LocalizedText; state: EventState; startsAt: string; endsAt: string | null; affectedServices: AffectedService[]; affectsUptime: boolean; timeline: TimelineEntry[]; }
 export interface PaginatedStatusEvents { events: StatusEvent[]; page: number; pageSize: number; totalItems: number; totalPages: number; }

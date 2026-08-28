@@ -10,6 +10,7 @@ import {
   incidentUpdates,
   maintenances,
   maintenanceServices,
+  maintenanceUpdates,
   notificationJobs,
   services,
   subscriptions,
@@ -72,11 +73,15 @@ export const loadMaintenances = () => safely(async () => {
   const db = getDb();
   const rows = await db.select().from(maintenances)
     .where(isNull(maintenances.archivedAt)).orderBy(desc(maintenances.scheduledStartAt));
-  const links = await db.select().from(maintenanceServices);
+  const [links, updates] = await Promise.all([
+    db.select().from(maintenanceServices),
+    db.select().from(maintenanceUpdates).orderBy(desc(maintenanceUpdates.effectiveAt)),
+  ]);
   return rows.map((row) => ({
     ...row,
     serviceIds: links.filter((link) => link.maintenanceId === row.id).map((link) => link.serviceId),
     uptimeServiceIds: links.filter((link) => link.maintenanceId === row.id && link.affectsUptime).map((link) => link.serviceId),
+    updates: updates.filter((update) => update.maintenanceId === row.id),
   }));
 });
 

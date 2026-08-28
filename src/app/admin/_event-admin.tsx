@@ -19,7 +19,7 @@ type IncidentItem = {
 type MaintenanceItem = {
   id: string; slug: string; titleEn: string; titleIt: string; descriptionEn: string; descriptionIt: string;
   status: MaintenanceStatus; scheduledStartAt: string; scheduledEndAt: string; actualStartAt: string | null; actualEndAt: string | null;
-  isPublished: boolean; serviceIds: string[]; uptimeServiceIds: string[];
+  isPublished: boolean; serviceIds: string[]; uptimeServiceIds: string[]; updates: { id: string }[];
 };
 
 function stateValue(state: EventActionState, key: string, fallback = "") {
@@ -88,7 +88,7 @@ function IncidentForm({ item, services, onSuccess }: { item?: IncidentItem; serv
     <LocalDateTimeField label="Started at" name="startedAt" required defaultValue={stateValue(state, "startedAt", item?.startedAt)} />
     <LocalDateTimeField label="Resolved at (optional)" name="resolvedAt" defaultValue={stateValue(state, "resolvedAt", item?.resolvedAt ?? "")} />
     <ServiceFields services={services} selected={selected} uptimeSelected={uptimeSelected} defaultAffectsUptime />
-    {!item?.isPublished && <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish now</label>}
+    {!item?.isPublished && <><label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish now</label><label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="notifySubscribers" defaultChecked={state.values ? stateValue(state, "notifySubscribers") === "on" : true} />Notify subscribers when publishing</label></>}
     <FormStatus state={state} /><button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Saving…" : item ? "Save incident" : "Create incident"}</button>
   </form>;
 }
@@ -99,10 +99,12 @@ function IncidentUpdateForm({ item, onSuccess }: { item: IncidentItem; onSuccess
   return <form action={formAction} className={styles.form}>
     <input type="hidden" name="id" value={item.id} />
     <label className={styles.field}>New status<select name="status" defaultValue={stateValue(state, "status", item.status)}><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select></label>
+    <LocalDateTimeField label="Update date and time" name="effectiveAt" required defaultValue={stateValue(state, "effectiveAt", new Date().toISOString())} />
     <LocalDateTimeField label="Resolved at (when resolving)" name="resolvedAt" defaultValue={stateValue(state, "resolvedAt", item.resolvedAt ?? "")} />
     <RichTextField label="English update" name="messageEn" required defaultValue={stateValue(state, "messageEn")} />
     <RichTextField label="Italian update" name="messageIt" required defaultValue={stateValue(state, "messageIt")} />
     {!item.isPublished && <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish incident</label>}
+    <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="notifySubscribers" defaultChecked={state.values ? stateValue(state, "notifySubscribers") === "on" : true} />Notify subscribers</label>
     <FormStatus state={state} /><button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Publishing…" : "Add timeline update"}</button>
   </form>;
 }
@@ -143,7 +145,7 @@ function MaintenanceForm({ item, services, defaultAffectsUptime, onSuccess }: { 
     <LocalDateTimeField label="Scheduled start" name="scheduledStartAt" required defaultValue={stateValue(state, "scheduledStartAt", item?.scheduledStartAt)} /><LocalDateTimeField label="Scheduled end" name="scheduledEndAt" required defaultValue={stateValue(state, "scheduledEndAt", item?.scheduledEndAt)} />
     <LocalDateTimeField label="Actual start (optional)" name="actualStartAt" defaultValue={stateValue(state, "actualStartAt", item?.actualStartAt ?? "")} /><LocalDateTimeField label="Actual end (optional)" name="actualEndAt" defaultValue={stateValue(state, "actualEndAt", item?.actualEndAt ?? "")} />
     <ServiceFields services={services} selected={selected} uptimeSelected={uptimeSelected} defaultAffectsUptime={defaultAffectsUptime} />
-    {!item?.isPublished && <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish now</label>}
+    {!item?.isPublished && <><label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish now</label><label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="notifySubscribers" defaultChecked={state.values ? stateValue(state, "notifySubscribers") === "on" : true} />Notify subscribers when publishing</label></>}
     <FormStatus state={state} /><button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Saving…" : item ? "Save maintenance" : "Create maintenance"}</button>
   </form>;
 }
@@ -153,8 +155,12 @@ function MaintenanceUpdateForm({ item, onSuccess }: { item: MaintenanceItem; onS
   useEffect(() => { if (state.status === "success") onSuccess?.(); }, [onSuccess, state.submissionId, state.status]);
   return <form action={formAction} className={styles.form}><input type="hidden" name="id" value={item.id} />
     <label className={styles.field}>Status<select name="status" defaultValue={stateValue(state, "status", item.status)}><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+    <LocalDateTimeField label="Update date and time" name="effectiveAt" required defaultValue={stateValue(state, "effectiveAt", new Date().toISOString())} />
     <LocalDateTimeField label="Actual start" name="actualStartAt" defaultValue={stateValue(state, "actualStartAt", item.actualStartAt ?? "")} /><LocalDateTimeField label="Actual end" name="actualEndAt" defaultValue={stateValue(state, "actualEndAt", item.actualEndAt ?? "")} />
+    <RichTextField label="English update" name="messageEn" required defaultValue={stateValue(state, "messageEn")} />
+    <RichTextField label="Italian update" name="messageIt" required defaultValue={stateValue(state, "messageIt")} />
     {!item.isPublished && <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="publish" defaultChecked={stateValue(state, "publish") === "on"} />Publish maintenance</label>}
+    <label className={`${styles.check} ${styles.full}`}><input type="checkbox" name="notifySubscribers" defaultChecked={state.values ? stateValue(state, "notifySubscribers") === "on" : true} />Notify subscribers</label>
     <FormStatus state={state} /><button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Saving…" : "Update status"}</button>
   </form>;
 }
@@ -167,7 +173,7 @@ export function MaintenanceAdmin({ services, current, past, defaultAffectsUptime
 }
 
 function MaintenanceRow({ item, services, defaultAffectsUptime }: { item: MaintenanceItem; services: ServiceOption[]; defaultAffectsUptime: boolean }) {
-  return <div className={`${styles.row} ${styles.eventRow}`}><div><strong>{item.titleEn}</strong><small>{item.status} · {item.isPublished ? "Published" : "Draft"} · <LocalTime value={item.scheduledStartAt} /></small></div><div className={styles.rowActions}>
+  return <div className={`${styles.row} ${styles.eventRow}`}><div><strong>{item.titleEn}</strong><small>{item.status} · {item.isPublished ? "Published" : "Draft"} · <LocalTime value={item.scheduledStartAt} /> · {item.updates.length} updates</small></div><div className={styles.rowActions}>
     <DialogForm button="Edit" title={`Edit ${item.titleEn}`}>{(close) => <MaintenanceForm item={item} services={services} defaultAffectsUptime={defaultAffectsUptime} onSuccess={close} />}</DialogForm>
     <DialogForm button="Update status" title={`Update ${item.titleEn}`}>{(close) => <MaintenanceUpdateForm item={item} onSuccess={close} />}</DialogForm>
     <form action={archiveEvent}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="type" value="maintenance" /><button className={styles.dangerButton}>Archive</button></form>

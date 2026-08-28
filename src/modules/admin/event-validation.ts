@@ -20,6 +20,29 @@ export const optionalUtcDate = z.preprocess(
 
 export const requiredUtcDate = utcDate;
 
+export function validateUpdateEffectiveAt(
+  effectiveAt: Date,
+  now = new Date(),
+  earliest?: Date,
+): string | null {
+  if (effectiveAt.getTime() > now.getTime() + 60_000) return "An update date cannot be in the future.";
+  if (earliest && effectiveAt < earliest) return "An incident update cannot predate the incident start.";
+  return null;
+}
+
+export function isValidTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function shouldApplyEffectiveUpdate(currentEffectiveAt: Date, candidateEffectiveAt: Date): boolean {
+  return candidateEffectiveAt >= currentEffectiveAt;
+}
+
 export function validateIncidentTiming(input: {
   status: "investigating" | "identified" | "monitoring" | "resolved";
   startedAt: Date;

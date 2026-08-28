@@ -20,6 +20,7 @@ import {
   incidentUpdates,
   maintenances,
   maintenanceServices,
+  maintenanceUpdates,
   services,
   serviceUptimeMetrics,
   systemSettings,
@@ -27,7 +28,7 @@ import {
 
 import type {
   AffectedService,
-  DayState,
+  DayEvent,
   PaginatedStatusEvents,
   PublicStatusRepository,
   PublicStatusSnapshot,
@@ -35,9 +36,9 @@ import type {
   ServiceState,
   StatusEvent,
   TimelineEntry,
+  UptimeDay,
 } from "./types";
 
-const HISTORY_DAYS = 60;
 const EVENT_QUERY_LIMIT = 100;
 const UPCOMING_DAYS = 90;
 const RECENT_EVENT_LIMIT = 20;
@@ -109,6 +110,7 @@ type Association = {
 export interface StatusReadModel {
   now: Date;
   uptimeIntervalDays: number;
+  publicTimezone: string;
   categories: CategoryRow[];
   services: ServiceRow[];
   incidents: IncidentRow[];
@@ -170,8 +172,15 @@ function maintenanceBounds(row: MaintenanceRow): { start: Date; end: Date | null
 function mapMaintenance(
   row: MaintenanceRow,
   associations: readonly Association[],
+  updates: TimelineEntry[] = [],
 ): StatusEvent {
   const bounds = maintenanceBounds(row);
+  const timeline = (updates.length ? updates : [{
+      id: `maintenance-${row.id}`,
+      state: row.status,
+      effectiveAt: toIso(row.publishedAt),
+      message: { en: row.descriptionEn, it: row.descriptionIt },
+    } satisfies TimelineEntry]).sort((a, b) => Date.parse(b.effectiveAt) - Date.parse(a.effectiveAt));
   return {
     kind: "maintenance",
     slug: row.slug,
@@ -182,14 +191,7 @@ function mapMaintenance(
     endsAt: bounds.end ? toIso(bounds.end) : null,
     affectedServices: mapAffectedServices(associations),
     affectsUptime: associations.some((item) => item.affectsUptime),
-    timeline: [
-      {
-        id: `maintenance-${row.id}`,
-        state: row.status,
-        publishedAt: toIso(row.publishedAt),
-        message: { en: row.descriptionEn, it: row.descriptionIt },
-      },
-    ],
+    timeline,
   };
 }
 
@@ -221,6 +223,69 @@ function eventOverlapsDay(
   return start.getTime() < dayEnd && (end?.getTime() ?? dayEnd) > dayStart;
 }
 
+const FALLBACK_PUBLIC_TIMEZONE = "Europe/Rome";
+
+function validTimezone(value: string): string {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value }).format();
+    return value;
+  } catch {
+    return FALLBACK_PUBLIC_TIMEZONE;
+  }
+}
+
+function calendarDate(value: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function shiftCalendarDate(value: string, days: number): string {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year!, month! - 1, day! + days)).toISOString().slice(0, 10);
+}
+
+function zonedMidnight(value: string, formatter: Intl.DateTimeFormat): number {
+  const [year, month, day] = value.split("-").map(Number);
+  const target = Date.UTC(year!, month! - 1, day!);
+  let guess = target;
+  for (let index = 0; index < 3; index += 1) {
+    const parts = formatter.formatToParts(new Date(guess));
+    const get = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+    const renderedAsUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+    guess -= renderedAsUtc - target;
+  }
+  return guess;
+}
+
+function historyWindows(now: Date, intervalDays: number, configuredTimezone: string) {
+  const timeZone = validTimezone(configuredTimezone);
+  const today = calendarDate(now, timeZone);
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  return Array.from({ length: intervalDays }, (_, index) => {
+    const date = shiftCalendarDate(today, index - intervalDays + 1);
+    return {
+      date,
+      start: zonedMidnight(date, formatter),
+      end: zonedMidnight(shiftCalendarDate(date, 1), formatter),
+    };
+  });
+}
+
 /** Pure mapper kept separate from SQL so state precedence remains testable. */
 export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapshot {
   const serviceSlugById = new Map(model.services.map((row) => [row.id, row.slug]));
@@ -248,6 +313,11 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
       row,
       associationsWithSlugs(maintenanceAssociations.get(row.id) ?? []),
     ),
+  );
+  const dayWindows = historyWindows(
+    model.now,
+    model.uptimeIntervalDays,
+    model.publicTimezone,
   );
 
   const currentStateByService = new Map<string, ServiceState>();
@@ -278,25 +348,25 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
     }
   }
 
-  const historyForService = (serviceId: string): DayState[] => {
-    const history: DayState[] = [];
-    const todayStart = Date.UTC(
-      model.now.getUTCFullYear(),
-      model.now.getUTCMonth(),
-      model.now.getUTCDate(),
-    );
-    for (let daysAgo = HISTORY_DAYS - 1; daysAgo >= 0; daysAgo -= 1) {
-      const dayStart = todayStart - daysAgo * DAY_MS;
-      const dayEnd = dayStart + DAY_MS;
+  const historyForService = (serviceId: string): UptimeDay[] => {
+    const history: UptimeDay[] = [];
+    for (const window of dayWindows) {
       let state: ServiceState = "operational";
+      const events: DayEvent[] = [];
       for (const row of model.maintenances) {
         if (row.status === "cancelled") continue;
         const association = (maintenanceAssociations.get(row.id) ?? []).find(
           (item) => item.serviceId === serviceId,
         );
         const bounds = maintenanceBounds(row);
-        if (association && eventOverlapsDay(bounds.start, bounds.end, dayStart, dayEnd)) {
+        if (association && eventOverlapsDay(bounds.start, bounds.end, window.start, window.end)) {
           state = strongerState(state, "maintenance");
+          events.push({
+            kind: "maintenance",
+            slug: row.slug,
+            title: { en: row.titleEn, it: row.titleIt },
+            impact: "maintenance",
+          });
         }
       }
       for (const row of model.incidents) {
@@ -305,15 +375,26 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
         );
         if (
           association &&
-          eventOverlapsDay(row.startedAt, row.resolvedAt, dayStart, dayEnd)
+          eventOverlapsDay(row.startedAt, row.resolvedAt, window.start, window.end)
         ) {
+          const impact = association.affectsUptime ? "outage" : "degraded";
           state = strongerState(
             state,
-            association.affectsUptime ? "outage" : "degraded",
+            impact,
           );
+          events.push({
+            kind: "incident",
+            slug: row.slug,
+            title: { en: row.titleEn, it: row.titleIt },
+            impact,
+          });
         }
       }
-      history.push(state);
+      history.push({
+        date: window.date,
+        state,
+        events: events.sort((a, b) => statePriority[b.impact] - statePriority[a.impact] || a.title.en.localeCompare(b.title.en)),
+      });
     }
     return history;
   };
@@ -392,10 +473,16 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
 
   async getSnapshot(): Promise<PublicStatusSnapshot> {
     const now = new Date();
-    const historySince = new Date(now.getTime() - HISTORY_DAYS * DAY_MS);
+    const [settings] = await this.db.select({
+      uptimeIntervalDays: systemSettings.uptimeIntervalDays,
+      publicTimezone: systemSettings.publicTimezone,
+    }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
+    const uptimeIntervalDays = settings?.uptimeIntervalDays ?? 30;
+    const publicTimezone = settings?.publicTimezone ?? FALLBACK_PUBLIC_TIMEZONE;
+    const historySince = new Date(now.getTime() - (uptimeIntervalDays + 1) * DAY_MS);
     const upcomingUntil = new Date(now.getTime() + UPCOMING_DAYS * DAY_MS);
 
-    const [categoryRows, serviceRows, incidentRows, maintenanceRows, [settings]] =
+    const [categoryRows, serviceRows, incidentRows, maintenanceRows] =
       await Promise.all([
         this.db.select({ id: categories.id, slug: categories.slug, displayOrder: categories.displayOrder, nameEn: categories.nameEn, nameIt: categories.nameIt, updatedAt: categories.updatedAt }).from(categories)
           .where(and(eq(categories.isActive, true), isNull(categories.archivedAt)))
@@ -407,11 +494,10 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
           .orderBy(asc(services.displayOrder), asc(services.nameEn)),
         this.db.select({ id: incidents.id, slug: incidents.slug, titleEn: incidents.titleEn, titleIt: incidents.titleIt, descriptionEn: incidents.descriptionEn, descriptionIt: incidents.descriptionIt, status: incidents.status, startedAt: incidents.startedAt, resolvedAt: incidents.resolvedAt, publishedAt: incidents.publishedAt, updatedAt: incidents.updatedAt }).from(incidents)
           .where(and(eq(incidents.isPublished, true), isNull(incidents.archivedAt), lte(incidents.startedAt, now), or(isNull(incidents.resolvedAt), gte(incidents.resolvedAt, historySince))))
-          .orderBy(desc(incidents.startedAt)).limit(EVENT_QUERY_LIMIT),
+          .orderBy(desc(incidents.startedAt)),
         this.db.select({ id: maintenances.id, slug: maintenances.slug, titleEn: maintenances.titleEn, titleIt: maintenances.titleIt, descriptionEn: maintenances.descriptionEn, descriptionIt: maintenances.descriptionIt, status: maintenances.status, scheduledStartAt: maintenances.scheduledStartAt, scheduledEndAt: maintenances.scheduledEndAt, actualStartAt: maintenances.actualStartAt, actualEndAt: maintenances.actualEndAt, publishedAt: maintenances.publishedAt, updatedAt: maintenances.updatedAt }).from(maintenances)
           .where(and(eq(maintenances.isPublished, true), isNull(maintenances.archivedAt), lte(maintenances.scheduledStartAt, upcomingUntil), or(eq(maintenances.status, "in_progress"), gte(sql`coalesce(${maintenances.actualEndAt}, ${maintenances.scheduledEndAt})`, historySince))))
-          .orderBy(desc(maintenances.scheduledStartAt)).limit(EVENT_QUERY_LIMIT),
-        this.db.select({ uptimeIntervalDays: systemSettings.uptimeIntervalDays }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1),
+          .orderBy(desc(maintenances.scheduledStartAt)),
       ]);
 
     const publishedIncidents = incidentRows.filter(
@@ -431,7 +517,7 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
         : Promise.resolve([]),
     ]);
 
-    return buildStatusSnapshot({ now, uptimeIntervalDays: settings?.uptimeIntervalDays ?? 30, categories: categoryRows, services: serviceRows, incidents: publishedIncidents, maintenances: publishedMaintenances, incidentAssociations: incidentLinks, maintenanceAssociations: maintenanceLinks });
+    return buildStatusSnapshot({ now, uptimeIntervalDays, publicTimezone, categories: categoryRows, services: serviceRows, incidents: publishedIncidents, maintenances: publishedMaintenances, incidentAssociations: incidentLinks, maintenanceAssociations: maintenanceLinks });
   }
 
   async getIncident(slug: string): Promise<StatusEvent | null> {
@@ -442,12 +528,12 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
     const [links, updates] = await Promise.all([
       this.db.select({ eventId: incidentServices.incidentId, serviceId: incidentServices.serviceId, affectsUptime: incidentServices.affectsUptime, serviceSlug: services.slug, serviceNameEn: services.nameEn, serviceNameIt: services.nameIt }).from(incidentServices)
         .innerJoin(services, eq(incidentServices.serviceId, services.id)).where(eq(incidentServices.incidentId, row.id)),
-      this.db.select({ id: incidentUpdates.id, state: incidentUpdates.status, publishedAt: incidentUpdates.publishedAt, messageEn: incidentUpdates.messageEn, messageIt: incidentUpdates.messageIt }).from(incidentUpdates)
+      this.db.select({ id: incidentUpdates.id, state: incidentUpdates.status, effectiveAt: incidentUpdates.effectiveAt, publishedAt: incidentUpdates.publishedAt, messageEn: incidentUpdates.messageEn, messageIt: incidentUpdates.messageIt }).from(incidentUpdates)
         .where(and(eq(incidentUpdates.incidentId, row.id), isNotNull(incidentUpdates.publishedAt)))
         .orderBy(desc(incidentUpdates.effectiveAt)).limit(EVENT_QUERY_LIMIT),
     ]);
     const timeline: TimelineEntry[] = updates.flatMap((update) =>
-      update.publishedAt ? [{ id: update.id, state: update.state, publishedAt: toIso(update.publishedAt), message: { en: update.messageEn, it: update.messageIt } }] : [],
+      update.publishedAt ? [{ id: update.id, state: update.state, effectiveAt: toIso(update.effectiveAt), message: { en: update.messageEn, it: update.messageIt } }] : [],
     );
     return mapIncident({ ...row, publishedAt: row.publishedAt }, links, timeline);
   }
@@ -457,9 +543,17 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
       .where(and(eq(maintenances.slug, slug), eq(maintenances.isPublished, true), isNull(maintenances.archivedAt))).limit(1);
     if (!row?.publishedAt) return null;
 
-    const links = await this.db.select({ eventId: maintenanceServices.maintenanceId, serviceId: maintenanceServices.serviceId, affectsUptime: maintenanceServices.affectsUptime, serviceSlug: services.slug, serviceNameEn: services.nameEn, serviceNameIt: services.nameIt }).from(maintenanceServices)
-      .innerJoin(services, eq(maintenanceServices.serviceId, services.id)).where(eq(maintenanceServices.maintenanceId, row.id));
-    return mapMaintenance({ ...row, publishedAt: row.publishedAt }, links);
+    const [links, updates] = await Promise.all([
+      this.db.select({ eventId: maintenanceServices.maintenanceId, serviceId: maintenanceServices.serviceId, affectsUptime: maintenanceServices.affectsUptime, serviceSlug: services.slug, serviceNameEn: services.nameEn, serviceNameIt: services.nameIt }).from(maintenanceServices)
+        .innerJoin(services, eq(maintenanceServices.serviceId, services.id)).where(eq(maintenanceServices.maintenanceId, row.id)),
+      this.db.select({ id: maintenanceUpdates.id, state: maintenanceUpdates.status, effectiveAt: maintenanceUpdates.effectiveAt, publishedAt: maintenanceUpdates.publishedAt, messageEn: maintenanceUpdates.messageEn, messageIt: maintenanceUpdates.messageIt }).from(maintenanceUpdates)
+        .where(and(eq(maintenanceUpdates.maintenanceId, row.id), isNotNull(maintenanceUpdates.publishedAt)))
+        .orderBy(desc(maintenanceUpdates.effectiveAt)).limit(EVENT_QUERY_LIMIT),
+    ]);
+    const timeline: TimelineEntry[] = updates.flatMap((update) =>
+      update.publishedAt ? [{ id: update.id, state: update.state, effectiveAt: toIso(update.effectiveAt), message: { en: update.messageEn, it: update.messageIt } }] : [],
+    );
+    return mapMaintenance({ ...row, publishedAt: row.publishedAt }, links, timeline);
   }
 
   async listIncidents(page: number, pageSize: number): Promise<PaginatedStatusEvents> {
