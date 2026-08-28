@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, ShieldCheck } from "lucide-react";
+import { Bell, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Locale } from "@/modules/i18n/config";
 import { otherLocale } from "@/modules/i18n/config";
@@ -28,14 +28,18 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
             <Image className={`${styles.brandLogo} ${styles.brandLogoDark}`} src={darkLogo} width={180} height={42} unoptimized alt="" aria-hidden="true" />
           </> : <span className={styles.brandMark} aria-hidden="true">{appearance.companyName.slice(0, 1).toUpperCase()}</span>}
         </Link>
-        <nav className={styles.actions} aria-label={locale === "en" ? "Page actions" : "Azioni della pagina"}>
-          <ThemeToggle className={styles.themeToggle} labelLight={locale === "it" ? "Usa tema chiaro" : "Use light mode"} labelDark={locale === "it" ? "Usa tema scuro" : "Use dark mode"} />
-          <Link className={styles.adminAccess} href="/admin" aria-label={t.admin} title={t.admin}><ShieldCheck size={17} aria-hidden="true" /></Link>
-          <LanguagePreferenceLink className={styles.language} currentLocale={locale} targetLocale={otherLocale(locale)} href={alternatePath} label={t.language} />
-          <Link className={styles.subscribe} href={`/${locale}#subscribe`} aria-label={t.subscribe}>
-            <Bell size={16} aria-hidden="true" /> <span>{t.subscribe}</span>
-          </Link>
-        </nav>
+        <div className={styles.headerActions}>
+          <nav className={styles.actions} aria-label={locale === "en" ? "Page actions" : "Azioni della pagina"}>
+            <ThemeToggle className={styles.themeToggle} labelLight={locale === "it" ? "Usa tema chiaro" : "Use light mode"} labelDark={locale === "it" ? "Usa tema scuro" : "Use dark mode"} />
+            <LanguagePreferenceLink className={styles.language} currentLocale={locale} targetLocale={otherLocale(locale)} href={alternatePath} label={t.language} />
+            <Link className={styles.subscribe} href={`/${locale}#subscribe`} aria-label={t.subscribe}>
+              <Bell size={16} aria-hidden="true" /> <span>{t.subscribe}</span>
+            </Link>
+          </nav>
+          <div className={styles.adminEntry}>
+            <Link className={styles.adminAccess} href="/admin" aria-label={t.admin} title={t.admin}><UserRound size={17} aria-hidden="true" /></Link>
+          </div>
+        </div>
       </header>
       {children}
       <footer className={styles.footer}>
