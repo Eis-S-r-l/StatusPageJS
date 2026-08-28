@@ -9,9 +9,9 @@
 .brandLogoDark { display: none; }
 :global(html[data-theme="dark"]) .brandLogoLight { display: none; }
 :global(html[data-theme="dark"]) .brandLogoDark { display: block; }
-.headerActions { gap: 2px; }
+.headerActions { gap: 0; }
 .actions { gap: 10px; }
-.adminEntry { margin-left: 2px; padding-left: 12px; border-left: 1px solid var(--color-border); }
+.adminEntry { margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--color-border); }
 .language, .adminAccess, .subscribe, .themeToggle { box-sizing: border-box; gap: 7px; padding: 10px 12px; border-radius: 9px; text-decoration: none; font-size: .88rem; font-weight: 650; }
 .language, .adminAccess, .themeToggle { height: 38px; border: 1px solid var(--color-border); color: var(--color-text); background: var(--color-surface); }
 .language { padding-block: 0; }
