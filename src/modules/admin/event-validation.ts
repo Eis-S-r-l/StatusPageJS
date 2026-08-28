@@ -43,6 +43,23 @@ export function shouldApplyEffectiveUpdate(currentEffectiveAt: Date, candidateEf
   return candidateEffectiveAt >= currentEffectiveAt;
 }
 
+export function initialIncidentStatusEffectiveAt(input: {
+  status: "investigating" | "identified" | "monitoring" | "resolved";
+  startedAt: Date;
+  resolvedAt?: Date | null;
+}): Date {
+  return input.status === "resolved" && input.resolvedAt ? input.resolvedAt : input.startedAt;
+}
+
+export function incidentStatusEffectiveAtAfterEdit(input: {
+  currentStatus: "investigating" | "identified" | "monitoring" | "resolved";
+  currentEffectiveAt: Date;
+  nextStatus: "investigating" | "identified" | "monitoring" | "resolved";
+  editedAt: Date;
+}): Date {
+  return input.currentStatus === input.nextStatus ? input.currentEffectiveAt : input.editedAt;
+}
+
 export function validateIncidentTiming(input: {
   status: "investigating" | "identified" | "monitoring" | "resolved";
   startedAt: Date;

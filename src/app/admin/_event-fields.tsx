@@ -18,7 +18,7 @@ export function LocalDateTimeField({ label, name, defaultValue, required = false
     const date = value instanceof Date ? value : new Date(value);
     if (!Number.isFinite(date.getTime())) return "";
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
+    return local.toISOString().slice(0, 19);
   };
   const ready = useSyncExternalStore(() => () => undefined, () => true, () => false);
   const [changedLocalValue, setChangedLocalValue] = useState<string | null>(null);
@@ -33,6 +33,7 @@ export function LocalDateTimeField({ label, name, defaultValue, required = false
     <input
       id={id}
       type="datetime-local"
+      step="1"
       value={localValue}
       required={required}
       disabled={!ready}

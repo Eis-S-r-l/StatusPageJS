@@ -19,5 +19,5 @@ export function DialogForm({ button, title, children }: { button: string; title:
     if (!open && element.open) element.close();
   }, [open]);
 
-  return <><button type="button" className={styles.secondaryButton} onClick={() => setOpen(true)}>{button}</button><dialog ref={dialog} className={styles.modal} aria-labelledby={titleId} onCancel={close}><div className={styles.modalCard}><div className={styles.modalHeader}><h2 id={titleId}>{title}</h2><button type="button" aria-label="Close" onClick={close}>×</button></div><div key={formKey}>{children(close)}</div></div></dialog></>;
+  return <><button type="button" className={styles.secondaryButton} onClick={() => setOpen(true)}>{button}</button><dialog ref={dialog} className={styles.modal} aria-labelledby={titleId} onCancel={close}><div className={styles.modalCard}><div className={styles.modalHeader}><h2 id={titleId}>{title}</h2><button type="button" aria-label="Close" onClick={close}>×</button></div>{open && <div key={formKey}>{children(close)}</div>}</div></dialog></>;
 }
