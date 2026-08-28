@@ -47,7 +47,16 @@ export const loadServiceManagement = () => safely(async () => {
 export const loadEventFormData = () => safely(async () => {
   const db = getDb();
   const [serviceRows, [settings]] = await Promise.all([
-    db.select({ id: services.id, nameEn: services.nameEn }).from(services).where(isNull(services.archivedAt)).orderBy(asc(services.nameEn)),
+    db.select({
+      id: services.id,
+      nameEn: services.nameEn,
+      categoryId: categories.id,
+      categoryNameEn: categories.nameEn,
+    })
+      .from(services)
+      .innerJoin(categories, eq(services.categoryId, categories.id))
+      .where(and(isNull(services.archivedAt), isNull(categories.archivedAt)))
+      .orderBy(asc(categories.displayOrder), asc(categories.nameEn), asc(services.displayOrder), asc(services.nameEn)),
     db.select({ plannedMaintenanceAffectsUptime: systemSettings.plannedMaintenanceAffectsUptime }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1),
   ]);
   return { services: serviceRows, plannedMaintenanceAffectsUptime: settings?.plannedMaintenanceAffectsUptime ?? false };

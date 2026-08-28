@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { slugify } from "@/modules/content/slug";
 
@@ -12,12 +12,16 @@ export function AutoSlugFields({
   sourceDefaultValue = "",
   slugDefaultValue = "",
   slugPlaceholder,
+  afterSource,
+  beforeSlug,
 }: {
   sourceLabel: string;
   sourceName: "nameEn" | "titleEn";
   sourceDefaultValue?: string;
   slugDefaultValue?: string;
   slugPlaceholder?: string;
+  afterSource?: ReactNode;
+  beforeSlug?: ReactNode;
 }) {
   const [source, setSource] = useState(sourceDefaultValue);
   const [slug, setSlug] = useState(slugDefaultValue || slugify(sourceDefaultValue));
@@ -36,6 +40,8 @@ export function AutoSlugFields({
         }}
       />
     </label>
+    {afterSource}
+    {beforeSlug}
     <label className={styles.field}>Slug
       <input
         name="slug"

@@ -29,16 +29,22 @@
 .serviceGroups { display: grid; gap: 16px; }
 .serviceGroup h3 { margin: 0 0 8px; color: var(--color-muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-.form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.form { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 15px; }
 .full { grid-column: 1 / -1; }
-.field { display: grid; gap: 7px; color: var(--color-muted); font-size: .78rem; font-weight: 650; }
-.field input, .field textarea, .field select { width: 100%; border: 1px solid var(--color-border); border-radius: 9px; padding: 10px 11px; background: var(--color-surface); color: var(--color-text); font: 400 .9rem var(--font-body), sans-serif; }
-.field input[type="checkbox"] { width: auto; padding: 0; }
+.field { display: grid; align-content: start; grid-auto-rows: max-content; gap: 7px; color: var(--color-muted); font-size: .78rem; font-weight: 650; }
+.field input, .field textarea, .field select { box-sizing: border-box; width: 100%; min-height: 42px; border: 1px solid var(--color-border); border-radius: 9px; padding: 10px 11px; background: var(--color-surface); color: var(--color-text); font: 400 .9rem var(--font-body), sans-serif; }
+.field input[type="checkbox"] { width: auto; min-height: 0; padding: 0; }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--color-primary); outline: 3px solid color-mix(in srgb, var(--color-primary) 16%, transparent); }
 .field textarea { min-height: 88px; resize: vertical; }
 .checks { display: flex; flex-wrap: wrap; gap: 10px; }
 .check { display: flex; align-items: center; gap: 7px; padding: 9px 11px; border: 1px solid var(--color-border); border-radius: 9px; font-size: .8rem; }
-.serviceChecks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin-top: 3px; }
+.serviceCategoryGroups { display: grid; gap: 12px; margin-top: 3px; }
+.serviceCategory { min-width: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: 11px; background: color-mix(in srgb, var(--color-primary) 3%, var(--color-background)); }
+.serviceCategoryHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+.serviceCategoryHeader h3 { margin: 0; color: var(--color-text); font-size: .84rem; }
+.serviceCategoryHeader small { display: block; margin-top: 3px; color: var(--color-muted); font-size: .68rem; font-weight: 400; }
+.categoryChoice { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); background: var(--color-surface); cursor: pointer; font-size: .72rem; font-weight: 700; }
+.serviceChecks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
 .serviceCheck { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface); }
 .serviceCheck[data-selected] { border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)); }
 .serviceName, .downtimeChoice { min-width: 0; display: flex; align-items: center; gap: 7px; font-size: .8rem; cursor: pointer; }
