@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, Languages } from "lucide-react";
+import { Bell, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Locale } from "@/modules/i18n/config";
+import { otherLocale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { brandingAssetUrl, loadPublicAppearance } from "@/modules/appearance/server";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { LanguagePreferenceLink } from "./LanguagePreferenceLink";
 import styles from "./public.module.css";
 
 interface PublicShellProps { locale: Locale; alternatePath: string; children: ReactNode; }
@@ -28,10 +30,9 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
         </Link>
         <nav className={styles.actions} aria-label={locale === "en" ? "Page actions" : "Azioni della pagina"}>
           <ThemeToggle className={styles.themeToggle} labelLight={locale === "it" ? "Usa tema chiaro" : "Use light mode"} labelDark={locale === "it" ? "Usa tema scuro" : "Use dark mode"} />
-          <Link className={styles.language} href={alternatePath} hrefLang={locale === "en" ? "it" : "en"}>
-            <Languages size={17} aria-hidden="true" /> {t.language}
-          </Link>
-          <Link className={styles.subscribe} href={`/${locale}#subscribe`}>
+          <Link className={styles.adminAccess} href="/admin" aria-label={t.admin}><ShieldCheck size={17} aria-hidden="true" /> <span>{t.admin}</span></Link>
+          <LanguagePreferenceLink className={styles.language} currentLocale={locale} targetLocale={otherLocale(locale)} href={alternatePath} label={t.language} />
+          <Link className={styles.subscribe} href={`/${locale}#subscribe`} aria-label={t.subscribe}>
             <Bell size={16} aria-hidden="true" /> <span>{t.subscribe}</span>
           </Link>
         </nav>

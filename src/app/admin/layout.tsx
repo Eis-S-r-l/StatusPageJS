@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const links = [
-  ["Admin dashboard", "/admin", Gauge], ["Public dashboard", "/en", Globe2], ["Services", "/admin/services", Wrench],
+  ["Admin dashboard", "/admin", Gauge], ["Public dashboard", "/", Globe2], ["Services", "/admin/services", Wrench],
   ["Incidents", "/admin/incidents", Siren], ["Maintenance", "/admin/maintenance", CalendarClock],
   ["Subscribers", "/admin/subscribers", Users], ["Appearance", "/admin/appearance", Palette], ["Settings", "/admin/settings", Settings],
 ] as const;
