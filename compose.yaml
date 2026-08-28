@@ -15,6 +15,7 @@ services:
       retries: 10
 
   migrate:
+    image: ghcr.io/eis-s-r-l/statuspagejs-worker:${CONTAINER_IMAGE_TAG:-latest}
     build:
       context: .
       target: worker
@@ -27,6 +28,7 @@ services:
     restart: "no"
 
   web:
+    image: ghcr.io/eis-s-r-l/statuspagejs-web:${CONTAINER_IMAGE_TAG:-latest}
     build:
       context: .
       target: web
@@ -44,6 +46,7 @@ services:
         condition: service_completed_successfully
 
   worker:
+    image: ghcr.io/eis-s-r-l/statuspagejs-worker:${CONTAINER_IMAGE_TAG:-latest}
     build:
       context: .
       target: worker

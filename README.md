@@ -37,13 +37,33 @@ The public dashboard stores collapsed service-category preferences in the browse
 
 ## VM deployment
 
-Copy `.env.example` to `.env`, replace every placeholder and default password, and set `APP_URL` to the public HTTPS URL. Then run:
+GitHub Actions publishes the application as two public, multi-platform container images:
+
+- `ghcr.io/eis-s-r-l/statuspagejs-web`
+- `ghcr.io/eis-s-r-l/statuspagejs-worker`, shared by the migration and worker services
+
+Publishing a GitHub Release runs the container workflow against that release's exact Git tag. It publishes the release tag, such as `v1.2.0`, plus an immutable `sha-<full-commit-sha>` tag. Stable releases also update `latest`; prereleases do not. Ordinary commits, draft releases, and creating a Git tag without publishing a release do not start a container build. Ensure the workflow is present on the repository's default branch before publishing the first release. PostgreSQL continues to use the official `postgres:17-alpine` image.
+
+After the first successful **Publish container images** workflow run, verify both packages under the EIS organization are public. GitHub normally links workflow-published packages to this public repository; if an organization policy leaves either package private, open its **Package settings → Change visibility → Public**. GitHub treats that visibility change as irreversible.
+
+Copy `.env.example` to `.env`, replace every placeholder and default password, and set `APP_URL` to the public HTTPS URL. Leave `CONTAINER_IMAGE_TAG=latest` to follow the most recent stable release, or use a release/commit tag for a reproducible deployment. Then fetch and start the images without allowing Compose to build locally:
 
 ```bash
-docker compose up --build -d
+docker compose pull
+docker compose up --no-build -d
 ```
 
 The Compose deployment starts PostgreSQL, applies migrations, and starts the Next.js web process and background worker. The web container is published only on the VM loopback address at `127.0.0.1:3000`, where the VM's existing Nginx instance can reach it without exposing Next.js directly to the internet. A dedicated `branding_data` volume persists uploaded logos and favicons across container replacements.
+
+To update the VM after a new release, pull the current repository configuration and images, then recreate the services:
+
+```bash
+git pull --ff-only
+docker compose pull
+docker compose up --no-build -d
+```
+
+For local development or an emergency source build, the existing build definitions remain available through `docker compose up --build -d`.
 
 An HTTP reverse-proxy example is provided at [`deploy/nginx/eis-status-page.conf.example`](./deploy/nginx/eis-status-page.conf.example). Replace `status.example.com`, then install it using the conventions of the VM's existing Nginx setup. A typical Debian or Ubuntu installation is:
 
@@ -91,7 +111,7 @@ docker compose down --volumes --remove-orphans
 This action is irreversible. Start the application again and verify that the migration completed successfully:
 
 ```bash
-docker compose up --build -d
+docker compose up --no-build -d
 docker compose logs --no-color migrate
 docker compose ps
 ```
