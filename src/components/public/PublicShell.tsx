@@ -30,7 +30,7 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
         </Link>
         <nav className={styles.actions} aria-label={locale === "en" ? "Page actions" : "Azioni della pagina"}>
           <ThemeToggle className={styles.themeToggle} labelLight={locale === "it" ? "Usa tema chiaro" : "Use light mode"} labelDark={locale === "it" ? "Usa tema scuro" : "Use dark mode"} />
-          <Link className={styles.adminAccess} href="/admin" aria-label={t.admin}><ShieldCheck size={17} aria-hidden="true" /> <span>{t.admin}</span></Link>
+          <Link className={styles.adminAccess} href="/admin" aria-label={t.admin} title={t.admin}><ShieldCheck size={17} aria-hidden="true" /></Link>
           <LanguagePreferenceLink className={styles.language} currentLocale={locale} targetLocale={otherLocale(locale)} href={alternatePath} label={t.language} />
           <Link className={styles.subscribe} href={`/${locale}#subscribe`} aria-label={t.subscribe}>
             <Bell size={16} aria-hidden="true" /> <span>{t.subscribe}</span>

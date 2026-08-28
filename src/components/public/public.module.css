@@ -11,11 +11,12 @@
 :global(html[data-theme="dark"]) .brandLogoDark { display: block; }
 .actions { gap: 10px; }
 .language, .adminAccess, .subscribe, .themeToggle { box-sizing: border-box; gap: 7px; padding: 10px 12px; border-radius: 9px; text-decoration: none; font-size: .88rem; font-weight: 650; }
-.language { color: var(--color-muted); }
-.adminAccess { border: 1px solid var(--color-border); color: var(--color-text); background: var(--color-surface); }
+.language, .adminAccess, .themeToggle { height: 38px; border: 1px solid var(--color-border); color: var(--color-text); background: var(--color-surface); }
+.language { padding-block: 0; }
+.adminAccess, .themeToggle { width: 38px; flex: 0 0 38px; justify-content: center; padding: 0; line-height: 0; }
 .subscribe { padding-inline: 16px; color: var(--color-primary-text); background: var(--color-primary); }
-.themeToggle { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; padding: 0; border: 1px solid var(--color-border); color: var(--color-muted); background: var(--color-surface); cursor: pointer; line-height: 0; }
-.themeToggle svg { display: block; width: 17px; height: 17px; margin: 0; }
+.themeToggle { display: grid; place-items: center; cursor: pointer; }
+.themeToggle svg, .adminAccess svg, .language svg { display: block; width: 17px; height: 17px; margin: 0; stroke-width: 2; }
 .hero, .section, .subscribePanel, .footer, .detailMain { width: min(960px, calc(100% - 40px)); margin-inline: auto; }
 .hero { padding: 78px 0 46px; }
 .historyHero { width: min(960px, calc(100% - 40px)); margin-inline: auto; padding: 78px 0 18px; }
@@ -148,7 +149,7 @@
 .timeline p { margin: 7px 0 0; color: var(--color-muted); font-size: .86rem; line-height: 1.6; }
 @media (hover:hover) { .subscribe, .adminAccess, .language, .themeToggle, .back, .eventFooter a { transition: transform .16s ease, opacity .16s ease; } .subscribe:hover, .adminAccess:hover, .themeToggle:hover, .back:hover, .eventFooter a:hover { transform: translateY(-1px); } .language:hover { opacity: .72; } }
 @media (max-width: 640px) {
-  .header { width: calc(100% - 24px); height: 70px; } .brandLogo { max-width: 96px; max-height: 36px; } .actions { gap: 6px; } .themeToggle, .language, .adminAccess, .subscribe { width: 36px; height: 36px; flex: 0 0 36px; justify-content: center; padding: 0; } .language { font-size: 0; } .language svg { width: 20px; height: 20px; } .adminAccess span, .subscribe span { display: none; }
+  .header { width: calc(100% - 24px); height: 70px; } .brandLogo { max-width: 96px; max-height: 36px; } .actions { gap: 6px; } .themeToggle, .language, .adminAccess, .subscribe { width: 36px; height: 36px; flex: 0 0 36px; justify-content: center; padding: 0; } .language { font-size: 0; } .language svg { width: 20px; height: 20px; } .subscribe span { display: none; }
   .hero, .historyHero { padding-top: 52px; } .current { display: none; } .section { padding-block: 32px; } .sectionHeading { align-items: center; } .historyLinks { align-items: flex-end; flex-direction: column; gap: 5px; }
   .legend { gap: 8px 11px; } .service { padding: 20px 16px; } .history { gap: 2px; } .serviceMeta p { display: none; }
   .eventFooter { align-items: end; } .eventFooter > span { max-width: 62%; } .subscribePanel { margin-block: 32px 48px; padding: 24px; align-items: flex-start; flex-direction: column; }
