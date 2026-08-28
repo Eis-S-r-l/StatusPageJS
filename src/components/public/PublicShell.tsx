@@ -37,6 +37,7 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
             </Link>
           </nav>
           <div className={styles.adminEntry}>
+            <span className={styles.headerDivider} aria-hidden="true" />
             <Link className={styles.adminAccess} href="/admin" aria-label={t.admin} title={t.admin}><UserRound size={17} aria-hidden="true" /></Link>
           </div>
         </div>
