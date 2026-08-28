@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { connection } from "next/server";
-import { Bell, CalendarClock, Gauge, LogOut, Palette, Settings, Siren, Users, Wrench } from "lucide-react";
+import { CalendarClock, Gauge, Globe2, LogOut, Palette, Settings, Siren, Users, Wrench } from "lucide-react";
 
 import { fontClassName } from "@/app/fonts";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -22,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const links = [
-  ["Dashboard", "/admin", Gauge], ["Services", "/admin/services", Wrench],
+  ["Admin dashboard", "/admin", Gauge], ["Public dashboard", "/en", Globe2], ["Services", "/admin/services", Wrench],
   ["Incidents", "/admin/incidents", Siren], ["Maintenance", "/admin/maintenance", CalendarClock],
   ["Subscribers", "/admin/subscribers", Users], ["Appearance", "/admin/appearance", Palette], ["Settings", "/admin/settings", Settings],
 ] as const;
@@ -35,15 +36,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = configured ? await readAdminSession() : null;
   const appearance = await loadPublicAppearance();
   const initialTheme = themeFromCookie((await cookies()).get("eis-theme")?.value);
+  const lightLogo = brandingAssetUrl("logo-light", appearance) ?? brandingAssetUrl("logo-dark", appearance);
+  const darkLogo = brandingAssetUrl("logo-dark", appearance) ?? lightLogo;
+  const statusPageTitle = appearance.statusPageTitle.trim() || `${appearance.companyName} Service Status`;
   return (
     <html lang="en" className={fontClassName} data-theme={initialTheme} style={appearanceStyle(appearance)} suppressHydrationWarning>
       <head><Script id="eis-theme-boot" strategy="beforeInteractive">{bootThemeScript}</Script></head>
       <body>
         {!session ? children : <div className={styles.frame}>
           <aside className={styles.sidebar}>
-            <Link className={styles.brand} href="/admin"><span className={styles.mark}>{appearance.companyName.slice(0, 1).toUpperCase()}</span><span>{appearance.companyName} Status Admin</span></Link>
+            <Link className={styles.brand} href="/admin" aria-label={`${statusPageTitle} administration`}>
+              {lightLogo && darkLogo ? <span className={styles.brandImages} aria-hidden="true">
+                <Image className={`${styles.brandLogo} ${styles.brandLogoLight}`} src={lightLogo} width={160} height={40} unoptimized alt="" />
+                <Image className={`${styles.brandLogo} ${styles.brandLogoDark}`} src={darkLogo} width={160} height={40} unoptimized alt="" />
+              </span> : <span className={styles.mark} aria-hidden="true">{appearance.companyName.slice(0, 1).toUpperCase()}</span>}
+              <span className={styles.brandTitle}>{statusPageTitle}</span>
+            </Link>
             <nav className={styles.nav}>{links.map(([label, href, Icon]) => <Link href={href} key={href}><Icon aria-hidden="true" />{label}</Link>)}</nav>
-            <div className={styles.sidebarFoot}><ThemeToggle className={styles.themeToggle} /><Bell size={16} aria-hidden="true" /><span>{session.email ?? session.name ?? session.subject}</span><form action="/api/auth/logout" method="get"><button className={styles.logoutButton} type="submit"><LogOut size={13} /> Sign out</button></form></div>
+            <div className={styles.sidebarFoot}><ThemeToggle className={styles.themeToggle} /><span>{session.email ?? session.name ?? session.subject}</span><form action="/api/auth/logout" method="get"><button className={styles.logoutButton} type="submit"><LogOut size={13} /> Sign out</button></form></div>
           </aside>
           <main className={styles.content}>{children}</main>
         </div>}

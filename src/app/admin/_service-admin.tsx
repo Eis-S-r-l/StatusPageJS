@@ -6,6 +6,7 @@ import { archiveEntity, createCategory, createService, editCategory, editService
 import { INITIAL_SERVICE_ADMIN_ACTION_STATE, type ServiceAdminActionState } from "@/modules/admin/service-validation";
 
 import { DialogForm } from "./_dialog-form";
+import { ConfirmDelete } from "./_confirm-delete";
 import { LocalDateTimeField } from "./_event-fields";
 import { AutoSlugFields } from "./_slug-fields";
 import styles from "./admin.module.css";
@@ -55,17 +56,20 @@ function ServiceForm({ item, categories, onSuccess }: { item?: ServiceItem; cate
   </form>;
 }
 
-function ArchiveButton({ id, type }: { id: string; type: "category" | "service" }) {
-  return <form action={archiveEntity}><input type="hidden" name="id" value={id} /><input type="hidden" name="type" value={type} /><button className={styles.dangerButton}>Archive</button></form>;
+function DeleteButton({ id, type, name }: { id: string; type: "category" | "service"; name: string }) {
+  const message = type === "category"
+    ? "This category and every service in it will be removed from the admin and public dashboards."
+    : "This service will be removed from the admin and public dashboards.";
+  return <ConfirmDelete deleteAction={archiveEntity} fields={[{ name: "id", value: id }, { name: "type", value: type }]} subject={name} message={message} />;
 }
 
 export function ServiceAdmin({ categories, services }: { categories: CategoryItem[]; services: ServiceItem[] }) {
   return <>
     <section className={styles.panel}><div className={styles.panelTitle}><h2>Categories</h2><DialogForm button="Add category" title="Add category">{(close) => <CategoryForm onSuccess={close} />}</DialogForm></div>
-      {categories.length ? <div className={styles.list}>{categories.map((item) => <div className={styles.row} key={item.id}><div><strong>{item.nameEn}</strong><small>{item.nameIt} · {item.slug} · Order {item.displayOrder}</small></div><div className={styles.rowActions}><DialogForm button="Edit" title={`Edit ${item.nameEn}`}>{(close) => <CategoryForm item={item} onSuccess={close} />}</DialogForm><ArchiveButton id={item.id} type="category" /></div></div>)}</div> : <div className={styles.empty}>No categories yet.</div>}
+      {categories.length ? <div className={styles.list}>{categories.map((item) => <div className={styles.row} key={item.id}><div><strong>{item.nameEn}</strong><small>{item.nameIt} · {item.slug} · Order {item.displayOrder}</small></div><div className={styles.rowActions}><DialogForm button="Edit" title={`Edit ${item.nameEn}`}>{(close) => <CategoryForm item={item} onSuccess={close} />}</DialogForm><DeleteButton id={item.id} type="category" name={item.nameEn} /></div></div>)}</div> : <div className={styles.empty}>No categories yet.</div>}
     </section>
     <section className={styles.panel}><div className={styles.panelTitle}><h2>Services</h2><DialogForm button="Add service" title="Add service">{(close) => <ServiceForm categories={categories} onSuccess={close} />}</DialogForm></div>
-      {services.length ? <div className={styles.serviceGroups}>{categories.map((category) => { const categoryServices = services.filter((service) => service.categoryId === category.id); return categoryServices.length ? <section className={styles.serviceGroup} key={category.id}><h3>{category.nameEn}</h3><div className={styles.list}>{categoryServices.map((item) => <div className={styles.row} key={item.id}><div><strong>{item.nameEn}</strong><small>{item.nameIt} · {item.slug} · Order {item.displayOrder}</small></div><div className={styles.rowActions}><DialogForm button="Edit" title={`Edit ${item.nameEn}`}>{(close) => <ServiceForm item={item} categories={categories} onSuccess={close} />}</DialogForm><ArchiveButton id={item.id} type="service" /></div></div>)}</div></section> : null; })}</div> : <div className={styles.empty}>No services yet.</div>}
+      {services.length ? <div className={styles.serviceGroups}>{categories.map((category) => { const categoryServices = services.filter((service) => service.categoryId === category.id); return categoryServices.length ? <section className={styles.serviceGroup} key={category.id}><h3>{category.nameEn}</h3><div className={styles.list}>{categoryServices.map((item) => <div className={styles.row} key={item.id}><div><strong>{item.nameEn}</strong><small>{item.nameIt} · {item.slug} · Order {item.displayOrder}</small></div><div className={styles.rowActions}><DialogForm button="Edit" title={`Edit ${item.nameEn}`}>{(close) => <ServiceForm item={item} categories={categories} onSuccess={close} />}</DialogForm><DeleteButton id={item.id} type="service" name={item.nameEn} /></div></div>)}</div></section> : null; })}</div> : <div className={styles.empty}>No services yet.</div>}
     </section>
   </>;
 }

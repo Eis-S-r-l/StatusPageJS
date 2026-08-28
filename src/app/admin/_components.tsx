@@ -1,7 +1,7 @@
 import styles from "./admin.module.css";
 
 export function PageHeader({ title, description }: { title: string; description: string }) {
-  return <header className={styles.header}><div><h1>{title}</h1><p>{description}</p></div><span className={styles.badge}>Manual operations</span></header>;
+  return <header className={styles.header}><div><h1>{title}</h1><p>{description}</p></div></header>;
 }
 
 export function Notice({ error, saved }: { error?: string; saved?: string }) {

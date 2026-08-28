@@ -4,8 +4,8 @@ import { deleteSubscriber, queueWebexTestNotification, refreshTelegramSubscriber
 import { loadSubscribers } from "@/modules/admin/data";
 import { requireAdmin } from "@/modules/auth/guard";
 import { Notice, PageHeader, Unavailable } from "../_components";
+import { ConfirmDelete } from "../_confirm-delete";
 import styles from "../admin.module.css";
-import { ConfirmDelete } from "./ConfirmDelete";
 
 type Query = { q?: string; channel?: string; status?: string; page?: string; error?: string; saved?: string };
 
@@ -69,9 +69,9 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
             </div>
             <details className={styles.eventActions}><summary>Edit</summary>
               <form className={styles.compactForm} action={updateSubscriber}><input type="hidden" name="id" value={item.id} /><label className={styles.field}>Language<select name="language" defaultValue={item.language}><option value="en">English</option><option value="it">Italian</option></select></label><div className={styles.checks}><label className={styles.check}><input name="receiveIncidents" type="checkbox" defaultChecked={item.receiveIncidents} /> Incidents</label><label className={styles.check}><input name="receiveMaintenance" type="checkbox" defaultChecked={item.receiveMaintenance} /> Maintenance</label></div><button className={styles.button} type="submit">Save preferences</button></form>
-              {item.channel === "telegram" && <form action={refreshTelegramSubscriber}><input type="hidden" name="id" value={item.id} /><button className={styles.dangerButton} type="submit">Refresh Telegram profile</button></form>}
+              {item.channel === "telegram" && <form action={refreshTelegramSubscriber}><input type="hidden" name="id" value={item.id} /><button className={styles.secondaryButton} type="submit">Refresh Telegram profile</button></form>}
               {item.channel === "webex" && <form action={queueWebexTestNotification}><input type="hidden" name="id" value={item.id} /><button className={styles.secondaryButton} type="submit">Queue Webex test notification</button></form>}
-              <ConfirmDelete action={deleteSubscriber} id={item.id} className={styles.dangerButton} />
+              <ConfirmDelete deleteAction={deleteSubscriber} fields={[{ name: "id", value: item.id }]} subject={identity ?? item.destination} message="This subscriber and all queued notification jobs will be permanently deleted." />
             </details>
           </div>;
         }) : <div className={styles.empty}>No matching subscriptions.</div>}</div>

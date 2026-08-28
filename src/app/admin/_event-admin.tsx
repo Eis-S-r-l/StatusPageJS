@@ -5,6 +5,7 @@ import { archiveEvent, createIncident, createMaintenance, editIncident, editMain
 import { INITIAL_EVENT_ACTION_STATE, type EventActionState } from "@/modules/admin/event-validation";
 import { LocalDateTimeField, RichTextField } from "./_event-fields";
 import { DialogForm } from "./_dialog-form";
+import { ConfirmDelete } from "./_confirm-delete";
 import { AutoSlugFields } from "./_slug-fields";
 import styles from "./admin.module.css";
 
@@ -182,7 +183,7 @@ function IncidentRow({ item, services }: { item: IncidentItem; services: Service
   return <div className={`${styles.row} ${styles.eventRow}`}><div><strong>{item.titleEn}</strong><small>{item.status} · {item.isPublished ? "Published" : "Draft"} · <LocalTime value={item.startedAt} /> · {item.updates.length} updates</small></div><div className={styles.rowActions}>
     <DialogForm button="Edit" title={`Edit ${item.titleEn}`}>{(close) => <IncidentForm item={item} services={services} onSuccess={close} />}</DialogForm>
     <DialogForm button="Add update" title={`Update ${item.titleEn}`}>{(close) => <IncidentUpdateForm item={item} onSuccess={close} />}</DialogForm>
-    <form action={archiveEvent}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="type" value="incident" /><button className={styles.dangerButton}>Archive</button></form>
+    <ConfirmDelete deleteAction={archiveEvent} fields={[{ name: "id", value: item.id }, { name: "type", value: "incident" }]} subject={item.titleEn} message="This incident will be removed from the admin and public dashboards." />
   </div></div>;
 }
 
@@ -238,7 +239,7 @@ function MaintenanceRow({ item, services, defaultAffectsUptime }: { item: Mainte
   return <div className={`${styles.row} ${styles.eventRow}`}><div><strong>{item.titleEn}</strong><small>{item.status} · {item.isPublished ? "Published" : "Draft"} · <LocalTime value={item.scheduledStartAt} /> · {item.updates.length} updates</small></div><div className={styles.rowActions}>
     <DialogForm button="Edit" title={`Edit ${item.titleEn}`}>{(close) => <MaintenanceForm item={item} services={services} defaultAffectsUptime={defaultAffectsUptime} onSuccess={close} />}</DialogForm>
     <DialogForm button="Update status" title={`Update ${item.titleEn}`}>{(close) => <MaintenanceUpdateForm item={item} onSuccess={close} />}</DialogForm>
-    <form action={archiveEvent}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="type" value="maintenance" /><button className={styles.dangerButton}>Archive</button></form>
+    <ConfirmDelete deleteAction={archiveEvent} fields={[{ name: "id", value: item.id }, { name: "type", value: "maintenance" }]} subject={item.titleEn} message="This maintenance event will be removed from the admin and public dashboards." />
   </div></div>;
 }
 
