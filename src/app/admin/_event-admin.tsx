@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { archiveEvent, createIncident, createMaintenance, editIncident, editMaintenance, updateIncident, updateMaintenance } from "@/modules/admin/actions";
+import { archiveEvent, createIncident, createMaintenance, deleteIncidentUpdate, editIncident, editIncidentUpdate, editMaintenance, updateIncident, updateMaintenance } from "@/modules/admin/actions";
 import { INITIAL_EVENT_ACTION_STATE, type EventActionState } from "@/modules/admin/event-validation";
 import { LocalDateTimeField, RichTextField } from "./_event-fields";
 import { DialogForm } from "./_dialog-form";
@@ -15,7 +15,11 @@ type MaintenanceStatus = "scheduled" | "in_progress" | "completed" | "cancelled"
 type IncidentItem = {
   id: string; slug: string; titleEn: string; titleIt: string; descriptionEn: string; descriptionIt: string;
   status: IncidentStatus; startedAt: string; resolvedAt: string | null; isPublished: boolean;
-  serviceIds: string[]; uptimeServiceIds: string[]; updates: { id: string }[];
+  serviceIds: string[]; uptimeServiceIds: string[]; updates: IncidentUpdateItem[];
+};
+type IncidentUpdateItem = {
+  id: string; status: IncidentStatus; messageEn: string; messageIt: string;
+  effectiveAt: string; publishedAt: string | null;
 };
 type MaintenanceItem = {
   id: string; slug: string; titleEn: string; titleIt: string; descriptionEn: string; descriptionIt: string;
@@ -166,6 +170,49 @@ function IncidentUpdateForm({ item, onSuccess }: { item: IncidentItem; onSuccess
   </form>;
 }
 
+function IncidentUpdateEditForm({ incident, update, onSuccess }: { incident: IncidentItem; update: IncidentUpdateItem; onSuccess?: () => void }) {
+  const [state, formAction, pending] = useActionState(editIncidentUpdate, INITIAL_EVENT_ACTION_STATE);
+  useEffect(() => { if (state.status === "success") onSuccess?.(); }, [onSuccess, state.submissionId, state.status]);
+  return <form action={formAction} className={`${styles.form} ${styles.updateEditForm}`}>
+    <input type="hidden" name="incidentId" value={incident.id} />
+    <input type="hidden" name="updateId" value={update.id} />
+    <label className={styles.field}>Status<select name="status" defaultValue={stateValue(state, "status", update.status)}><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select></label>
+    <LocalDateTimeField label="Update date and time" name="effectiveAt" required defaultValue={stateValue(state, "effectiveAt", update.effectiveAt)} />
+    <RichTextField label="English update" name="messageEn" required defaultValue={stateValue(state, "messageEn", update.messageEn)} />
+    <RichTextField label="Italian update" name="messageIt" required defaultValue={stateValue(state, "messageIt", update.messageIt)} />
+    <p className={`${styles.fieldHint} ${styles.full}`}>Corrections are not sent to subscribers. Edit the incident separately if its current status or resolution time also needs to change.</p>
+    <FormStatus state={state} />
+    <button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Saving…" : "Save timeline update"}</button>
+  </form>;
+}
+
+function IncidentUpdateRow({ incident, update, onSuccess }: { incident: IncidentItem; update: IncidentUpdateItem; onSuccess?: () => void }) {
+  const [editing, setEditing] = useState(false);
+  return <div className={styles.updateRow}>
+    <div className={styles.updateSummary}>
+      <strong>{update.status}</strong>
+      <small><LocalTime value={update.effectiveAt} /> · {update.publishedAt ? "Published" : "Draft"}</small>
+    </div>
+    <div className={styles.rowActions}>
+      <button type="button" className={styles.secondaryButton} aria-expanded={editing} onClick={() => setEditing((current) => !current)}>{editing ? "Cancel edit" : "Edit"}</button>
+      <ConfirmDelete
+        deleteAction={deleteIncidentUpdate}
+        fields={[{ name: "incidentId", value: incident.id }, { name: "updateId", value: update.id }]}
+        subject="timeline update"
+        message="This update will be permanently removed from the public incident timeline. Subscribers will not be notified."
+      />
+    </div>
+    {editing && <IncidentUpdateEditForm incident={incident} update={update} onSuccess={onSuccess} />}
+  </div>;
+}
+
+function IncidentUpdateManager({ item, onSuccess }: { item: IncidentItem; onSuccess?: () => void }) {
+  return <div>
+    <p className={styles.panelIntro}>Edit or permanently remove individual entries from this incident’s public timeline.</p>
+    <div className={styles.updateList}>{item.updates.map((update) => <IncidentUpdateRow key={update.id} incident={item} update={update} onSuccess={onSuccess} />)}</div>
+  </div>;
+}
+
 function LocalTime({ value }: { value: string }) {
   const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
   return <time dateTime={value}>{mounted ? new Date(value).toLocaleString() : value}</time>;
@@ -183,6 +230,7 @@ function IncidentRow({ item, services }: { item: IncidentItem; services: Service
   return <div className={`${styles.row} ${styles.eventRow}`}><div><strong>{item.titleEn}</strong><small>{item.status} · {item.isPublished ? "Published" : "Draft"} · <LocalTime value={item.startedAt} /> · {item.updates.length} updates</small></div><div className={styles.rowActions}>
     <DialogForm button="Edit" title={`Edit ${item.titleEn}`}>{(close) => <IncidentForm item={item} services={services} onSuccess={close} />}</DialogForm>
     <DialogForm button="Add update" title={`Update ${item.titleEn}`}>{(close) => <IncidentUpdateForm item={item} onSuccess={close} />}</DialogForm>
+    {item.updates.length > 0 && <DialogForm button="Manage updates" title={`Timeline updates for ${item.titleEn}`}>{(close) => <IncidentUpdateManager item={item} onSuccess={close} />}</DialogForm>}
     <ConfirmDelete deleteAction={archiveEvent} fields={[{ name: "id", value: item.id }, { name: "type", value: "incident" }]} subject={item.titleEn} message="This incident will be removed from the admin and public dashboards." />
   </div></div>;
 }

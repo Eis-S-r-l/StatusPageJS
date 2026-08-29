@@ -379,6 +379,115 @@ export async function updateIncident(_previous: EventActionState, form: FormData
   } catch (error) { return eventFailure(error, form); }
 }
 
+const incidentUpdateEditSchema = incidentUpdateSchema.omit({
+  id: true,
+  resolvedAt: true,
+  publish: true,
+  notifySubscribers: true,
+}).extend({
+  incidentId: z.string().uuid(),
+  updateId: z.string().uuid(),
+});
+
+export async function editIncidentUpdate(_previous: EventActionState, form: FormData): Promise<EventActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = incidentUpdateEditSchema.parse(values(form));
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [[incident], [current]] = await Promise.all([
+        tx.select({ id: incidents.id, startedAt: incidents.startedAt, archivedAt: incidents.archivedAt })
+          .from(incidents).where(eq(incidents.id, input.incidentId)).limit(1),
+        tx.select().from(incidentUpdates).where(and(
+          eq(incidentUpdates.id, input.updateId),
+          eq(incidentUpdates.incidentId, input.incidentId),
+        )).limit(1),
+      ]);
+      if (!incident || incident.archivedAt) throw new SafeActionError("That incident is no longer available.");
+      if (!current) throw new SafeActionError("That timeline update no longer exists.");
+      const effectiveError = validateUpdateEffectiveAt(input.effectiveAt, now, incident.startedAt);
+      if (effectiveError) throw new SafeActionError(effectiveError);
+      const messageEn = sanitizeRichText(input.messageEn);
+      const messageIt = sanitizeRichText(input.messageIt);
+      const after = {
+        incidentId: input.incidentId,
+        status: input.status,
+        effectiveAt: input.effectiveAt.toISOString(),
+        messageEn,
+        messageIt,
+      };
+      await tx.update(incidentUpdates).set({
+        status: input.status,
+        effectiveAt: input.effectiveAt,
+        messageEn,
+        messageIt,
+        updatedAt: now,
+      }).where(and(
+        eq(incidentUpdates.id, input.updateId),
+        eq(incidentUpdates.incidentId, input.incidentId),
+      ));
+      await tx.update(incidents).set({ updatedAt: now }).where(eq(incidents.id, input.incidentId));
+      await tx.insert(auditLogs).values({
+        actorSubject: admin.subject,
+        action: "edit",
+        entityType: "incident_update",
+        entityId: input.updateId,
+        before: {
+          incidentId: current.incidentId,
+          status: current.status,
+          effectiveAt: current.effectiveAt.toISOString(),
+          messageEn: current.messageEn,
+          messageIt: current.messageIt,
+        },
+        after,
+      });
+    });
+    return eventSuccess("Timeline update saved.");
+  } catch (error) { return eventFailure(error, form); }
+}
+
+export async function deleteIncidentUpdate(form: FormData) {
+  const admin = await requireAdmin();
+  const path = "/admin/incidents";
+  try {
+    const input = z.object({ incidentId: z.string().uuid(), updateId: z.string().uuid() }).parse(values(form));
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [[incident], [current]] = await Promise.all([
+        tx.select({ id: incidents.id, archivedAt: incidents.archivedAt })
+          .from(incidents).where(eq(incidents.id, input.incidentId)).limit(1),
+        tx.select().from(incidentUpdates).where(and(
+          eq(incidentUpdates.id, input.updateId),
+          eq(incidentUpdates.incidentId, input.incidentId),
+        )).limit(1),
+      ]);
+      if (!incident || incident.archivedAt) throw new SafeActionError("That incident is no longer available.");
+      if (!current) throw new SafeActionError("That timeline update no longer exists.");
+      await tx.delete(incidentUpdates).where(and(
+        eq(incidentUpdates.id, input.updateId),
+        eq(incidentUpdates.incidentId, input.incidentId),
+      ));
+      await tx.update(incidents).set({ updatedAt: now }).where(eq(incidents.id, input.incidentId));
+      await tx.insert(auditLogs).values({
+        actorSubject: admin.subject,
+        action: "delete",
+        entityType: "incident_update",
+        entityId: input.updateId,
+        before: {
+          incidentId: current.incidentId,
+          status: current.status,
+          effectiveAt: current.effectiveAt.toISOString(),
+          messageEn: current.messageEn,
+          messageIt: current.messageIt,
+        },
+      });
+    });
+  } catch (error) { finish(path, error); }
+  finish(path);
+}
+
 export async function editIncident(_previous: EventActionState, form: FormData): Promise<EventActionState> {
   const admin = await requireAdmin();
   try {

@@ -18,7 +18,13 @@ export default async function IncidentsPage() {
     archivedAt: item.archivedAt?.toISOString() ?? null,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
-    updates: item.updates.map((update) => ({ id: update.id })),
+    updates: item.updates.map((update) => ({
+      ...update,
+      effectiveAt: update.effectiveAt.toISOString(),
+      publishedAt: update.publishedAt?.toISOString() ?? null,
+      createdAt: update.createdAt.toISOString(),
+      updatedAt: update.updatedAt.toISOString(),
+    })),
   }));
   return <>
     <PageHeader title="Incidents" description="Manage event details separately from public timeline updates. Times are shown in each administrator’s browser timezone." />
