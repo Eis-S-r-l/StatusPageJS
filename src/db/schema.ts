@@ -349,6 +349,7 @@ export const systemSettings = pgTable(
     statusPageTitle: text("status_page_title")
       .default("EIS Service Status")
       .notNull(),
+    customHeaderScripts: text("custom_header_scripts").default("").notNull(),
     lightPalette: jsonb("light_palette").$type<ThemePalette>().default(DEFAULT_LIGHT_PALETTE).notNull(),
     darkPalette: jsonb("dark_palette").$type<ThemePalette>().default(DEFAULT_DARK_PALETTE).notNull(),
     logoLightFile: text("logo_light_file"),

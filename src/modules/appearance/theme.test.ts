@@ -22,6 +22,7 @@ describe("theme persistence", () => {
     const style = appearanceStyle({
       companyName: "EIS",
       statusPageTitle: "EIS Service Status",
+      customHeaderScripts: "",
       lightPalette: { ...DEFAULT_LIGHT_PALETTE, serviceStatusText: "#112233" },
       darkPalette: { ...DEFAULT_DARK_PALETTE, serviceStatusText: "#ddeeff" },
       logoLightFile: null,

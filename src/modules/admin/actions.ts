@@ -27,6 +27,7 @@ import { requireAdmin } from "@/modules/auth/guard";
 import { affectedServiceUnion } from "@/modules/admin/affected-services";
 import { formValues, incidentStatusEffectiveAtAfterEdit, initialIncidentStatusEffectiveAt, isValidTimezone, shouldApplyEffectiveUpdate, type EventActionState, optionalUtcDate, requiredUtcDate, validateIncidentTiming, validateMaintenanceTiming, validateUpdateEffectiveAt } from "@/modules/admin/event-validation";
 import { categoryAuditPayload, categoryInputSchema, monitoringStartChanged, serviceAuditPayload, serviceInputSchema, type ServiceAdminActionState } from "@/modules/admin/service-validation";
+import { parseHeaderScripts } from "@/modules/appearance/header-scripts";
 import { richTextToPlainText, sanitizeRichText } from "@/modules/content/rich-text";
 import { enqueueEventNotifications } from "@/modules/notifications/enqueue";
 import { refreshTelegramProfile } from "@/modules/subscriptions/bot-service";
@@ -34,6 +35,13 @@ import { recalculateAffectedServices, recalculateUptimeForAllServices } from "@/
 
 const slug = z.string().trim().min(2).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens");
 const requiredText = z.string().trim().min(1).max(500);
+const customHeaderScripts = z.string().max(100_000, "Custom header scripts cannot exceed 100,000 characters.").superRefine((value, context) => {
+  try {
+    parseHeaderScripts(value);
+  } catch (error) {
+    context.addIssue({ code: "custom", message: error instanceof Error ? error.message : "Check the custom header scripts." });
+  }
+});
 const EVENT_STATUS_LABELS = {
   investigating: { statusEn: "Investigating", statusIt: "In analisi" },
   identified: { statusEn: "Identified", statusIt: "Identificato" },
@@ -655,9 +663,9 @@ export async function updateSettings(form: FormData) {
   const path = "/admin/settings";
   let saved = false;
   try {
-    const input = z.object({ companyName: requiredText, statusPageTitle: z.string().trim().min(1, "Enter a status page title.").max(200), publicTimezone: requiredText, uptimeIntervalDays: z.coerce.number().int().min(1).max(3650), maintenancePreviewDays: z.coerce.number().int().min(1).max(3650), plannedMaintenanceAffectsUptime: z.string().optional() }).parse(values(form));
+    const input = z.object({ companyName: requiredText, statusPageTitle: z.string().trim().min(1, "Enter a status page title.").max(200), publicTimezone: requiredText, uptimeIntervalDays: z.coerce.number().int().min(1).max(3650), maintenancePreviewDays: z.coerce.number().int().min(1).max(3650), customHeaderScripts, plannedMaintenanceAffectsUptime: z.string().optional() }).parse(values(form));
     if (!isValidTimezone(input.publicTimezone)) throw new SafeActionError("Enter a valid IANA timezone, such as Europe/Rome.");
-    await getDb().insert(systemSettings).values({ id: 1, companyName: input.companyName, statusPageTitle: input.statusPageTitle, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, maintenancePreviewDays: input.maintenancePreviewDays, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime) }).onConflictDoUpdate({ target: systemSettings.id, set: { companyName: input.companyName, statusPageTitle: input.statusPageTitle, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, maintenancePreviewDays: input.maintenancePreviewDays, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime), updatedAt: new Date() } });
+    await getDb().insert(systemSettings).values({ id: 1, companyName: input.companyName, statusPageTitle: input.statusPageTitle, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, maintenancePreviewDays: input.maintenancePreviewDays, customHeaderScripts: input.customHeaderScripts, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime) }).onConflictDoUpdate({ target: systemSettings.id, set: { companyName: input.companyName, statusPageTitle: input.statusPageTitle, publicTimezone: input.publicTimezone, uptimeIntervalDays: input.uptimeIntervalDays, maintenancePreviewDays: input.maintenancePreviewDays, customHeaderScripts: input.customHeaderScripts, plannedMaintenanceAffectsUptime: Boolean(input.plannedMaintenanceAffectsUptime), updatedAt: new Date() } });
     saved = true;
     await recalculateUptimeForAllServices();
     await audit(admin.subject, "update", "settings", "1", input);

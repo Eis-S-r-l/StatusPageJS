@@ -1,0 +1,1 @@
+ALTER TABLE "system_settings" ADD COLUMN "custom_header_scripts" text DEFAULT '' NOT NULL;

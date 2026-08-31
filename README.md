@@ -399,6 +399,8 @@ Authenticated administrators can use `/admin/settings` to set the persisted publ
 
 Visitors initially follow their operating-system color preference and can override it with the theme button. That choice is stored only in their browser. Logos accept PNG, JPEG, or WebP; favicons accept PNG or ICO; each file is limited to 2 MB. SVG uploads are deliberately rejected.
 
+The settings page also accepts custom JavaScript for analytics and consent tools. Administrators can enter plain JavaScript or paste one or more complete `<script>...</script>` elements; external `src` scripts and common `data-*` configuration attributes are supported. These scripts run early on every public page and never on the administration area. Because they execute with the same browser privileges as application code, only snippets from trusted providers should be saved.
+
 ## Quality checks
 
 ```bash

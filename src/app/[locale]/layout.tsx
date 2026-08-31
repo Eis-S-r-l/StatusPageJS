@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import { fontClassName } from "@/app/fonts";
+import { CustomHeaderScripts } from "@/components/public/CustomHeaderScripts";
 import { brandingAssetUrl, loadPublicAppearance } from "@/modules/appearance/server";
 import { appearanceStyle, bootThemeScript, themeFromCookie } from "@/modules/appearance/theme";
 import { isLocale, locales } from "@/modules/i18n/config";
@@ -48,7 +49,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   const initialTheme = themeFromCookie((await cookies()).get("eis-theme")?.value);
   return (
     <html lang={locale} className={fontClassName} data-theme={initialTheme} style={appearanceStyle(appearance)} suppressHydrationWarning>
-      <head><Script id="eis-theme-boot" strategy="beforeInteractive">{bootThemeScript}</Script></head>
+      <head><Script id="eis-theme-boot" strategy="beforeInteractive">{bootThemeScript}</Script><CustomHeaderScripts value={appearance.customHeaderScripts} /></head>
       <body>{children}</body>
     </html>
   );
