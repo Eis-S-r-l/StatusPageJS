@@ -336,6 +336,9 @@ export const systemSettings = pgTable(
   {
     id: integer("id").primaryKey().default(1),
     uptimeIntervalDays: integer("uptime_interval_days").default(30).notNull(),
+    maintenancePreviewDays: integer("maintenance_preview_days")
+      .default(7)
+      .notNull(),
     plannedMaintenanceAffectsUptime: boolean(
       "planned_maintenance_affects_uptime",
     )
@@ -361,6 +364,10 @@ export const systemSettings = pgTable(
     check(
       "system_settings_interval_positive",
       sql`${table.uptimeIntervalDays} > 0`,
+    ),
+    check(
+      "system_settings_maintenance_preview_positive",
+      sql`${table.maintenancePreviewDays} > 0`,
     ),
   ],
 );

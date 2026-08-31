@@ -1,0 +1,2 @@
+ALTER TABLE "system_settings" ADD COLUMN "maintenance_preview_days" integer DEFAULT 7 NOT NULL;--> statement-breakpoint
+ALTER TABLE "system_settings" ADD CONSTRAINT "system_settings_maintenance_preview_positive" CHECK ("system_settings"."maintenance_preview_days" > 0);

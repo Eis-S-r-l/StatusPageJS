@@ -40,7 +40,6 @@ import type {
 } from "./types";
 
 const EVENT_QUERY_LIMIT = 100;
-const UPCOMING_DAYS = 90;
 const RECENT_EVENT_LIMIT = 20;
 const DAY_MS = 86_400_000;
 
@@ -110,6 +109,7 @@ type Association = {
 export interface StatusReadModel {
   now: Date;
   uptimeIntervalDays: number;
+  maintenancePreviewDays: number;
   publicTimezone: string;
   categories: CategoryRow[];
   services: ServiceRow[];
@@ -426,10 +426,14 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
   const activeIncidents = incidentEvents.filter(
     (event) => event.endsAt === null && event.state !== "resolved",
   );
+  const maintenancePreviewEnd = model.now.getTime() + model.maintenancePreviewDays * DAY_MS;
   const upcomingMaintenance = maintenanceEvents.filter((event) => {
+    const start = Date.parse(event.startsAt);
     const end = event.endsAt ? Date.parse(event.endsAt) : Number.POSITIVE_INFINITY;
-    return (event.state === "scheduled" || event.state === "in_progress") && end >= model.now.getTime();
-  });
+    return (event.state === "scheduled" || event.state === "in_progress")
+      && start <= maintenancePreviewEnd
+      && end >= model.now.getTime();
+  }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
   const recentEvents = [...incidentEvents, ...maintenanceEvents]
     .filter((event) => {
       if (event.kind === "incident") return event.endsAt !== null;
@@ -457,6 +461,7 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
       ? timestamps.reduce((latest, candidate) => (candidate > latest ? candidate : latest))
       : model.now),
     uptimeIntervalDays: model.uptimeIntervalDays,
+    maintenancePreviewDays: model.maintenancePreviewDays,
     categories: publicCategories,
     activeIncidents,
     upcomingMaintenance,
@@ -475,12 +480,14 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
     const now = new Date();
     const [settings] = await this.db.select({
       uptimeIntervalDays: systemSettings.uptimeIntervalDays,
+      maintenancePreviewDays: systemSettings.maintenancePreviewDays,
       publicTimezone: systemSettings.publicTimezone,
     }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
     const uptimeIntervalDays = settings?.uptimeIntervalDays ?? 30;
+    const maintenancePreviewDays = settings?.maintenancePreviewDays ?? 7;
     const publicTimezone = settings?.publicTimezone ?? FALLBACK_PUBLIC_TIMEZONE;
     const historySince = new Date(now.getTime() - (uptimeIntervalDays + 1) * DAY_MS);
-    const upcomingUntil = new Date(now.getTime() + UPCOMING_DAYS * DAY_MS);
+    const upcomingUntil = new Date(now.getTime() + maintenancePreviewDays * DAY_MS);
 
     const [categoryRows, serviceRows, incidentRows, maintenanceRows] =
       await Promise.all([
@@ -517,7 +524,7 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
         : Promise.resolve([]),
     ]);
 
-    return buildStatusSnapshot({ now, uptimeIntervalDays, publicTimezone, categories: categoryRows, services: serviceRows, incidents: publishedIncidents, maintenances: publishedMaintenances, incidentAssociations: incidentLinks, maintenanceAssociations: maintenanceLinks });
+    return buildStatusSnapshot({ now, uptimeIntervalDays, maintenancePreviewDays, publicTimezone, categories: categoryRows, services: serviceRows, incidents: publishedIncidents, maintenances: publishedMaintenances, incidentAssociations: incidentLinks, maintenanceAssociations: maintenanceLinks });
   }
 
   async getIncident(slug: string): Promise<StatusEvent | null> {

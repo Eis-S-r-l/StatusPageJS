@@ -96,7 +96,7 @@ export const loadMaintenances = () => safely(async () => {
 
 export const loadSettings = () => safely(async () => {
   const [row] = await getDb().select().from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
-  return row ?? { id: 1, uptimeIntervalDays: 30, plannedMaintenanceAffectsUptime: false, publicTimezone: "Europe/Rome", companyName: "EIS", statusPageTitle: "EIS Service Status" };
+  return row ?? { id: 1, uptimeIntervalDays: 30, maintenancePreviewDays: 7, plannedMaintenanceAffectsUptime: false, publicTimezone: "Europe/Rome", companyName: "EIS", statusPageTitle: "EIS Service Status" };
 });
 
 export const loadAppearanceSettings = () => safely(async () => {

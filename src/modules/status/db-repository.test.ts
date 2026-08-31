@@ -12,6 +12,7 @@ function baseModel(): StatusReadModel {
   return {
     now,
     uptimeIntervalDays: 45,
+    maintenancePreviewDays: 7,
     publicTimezone: "Europe/Rome",
     categories: [
       {
@@ -99,6 +100,7 @@ describe("buildStatusSnapshot", () => {
     ]);
     expect(snapshot.lastUpdatedAt).toBe("2026-08-26T11:55:00.000Z");
     expect(snapshot.uptimeIntervalDays).toBe(45);
+    expect(snapshot.maintenancePreviewDays).toBe(7);
   });
 
   it("applies outage, degradation, and maintenance state precedence", () => {
@@ -211,6 +213,47 @@ describe("buildStatusSnapshot", () => {
     ]);
     expect(snapshot.recentEvents.map((event) => event.slug)).toEqual([
       "resolved",
+    ]);
+  });
+
+  it("limits upcoming maintenance to the configured preview window", () => {
+    const model = baseModel();
+    model.maintenancePreviewDays = 7;
+    model.maintenances.push(
+      {
+        id: "inside-window-id",
+        slug: "inside-window",
+        titleEn: "Inside window",
+        titleIt: "Nella finestra",
+        descriptionEn: "Soon",
+        descriptionIt: "Presto",
+        status: "scheduled",
+        scheduledStartAt: date("2026-09-02T12:00:00Z"),
+        scheduledEndAt: date("2026-09-02T13:00:00Z"),
+        actualStartAt: null,
+        actualEndAt: null,
+        publishedAt: date("2026-08-20T10:00:00Z"),
+        updatedAt: date("2026-08-20T10:00:00Z"),
+      },
+      {
+        id: "outside-window-id",
+        slug: "outside-window",
+        titleEn: "Outside window",
+        titleIt: "Fuori dalla finestra",
+        descriptionEn: "Later",
+        descriptionIt: "Più avanti",
+        status: "scheduled",
+        scheduledStartAt: date("2026-09-02T12:00:01Z"),
+        scheduledEndAt: date("2026-09-02T13:00:01Z"),
+        actualStartAt: null,
+        actualEndAt: null,
+        publishedAt: date("2026-08-20T10:00:00Z"),
+        updatedAt: date("2026-08-20T10:00:00Z"),
+      },
+    );
+
+    expect(buildStatusSnapshot(model).upcomingMaintenance.map((event) => event.slug)).toEqual([
+      "inside-window",
     ]);
   });
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { AlertTriangle, CalendarClock, Check, Radio } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Check, Radio } from "lucide-react";
 import type { Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
-import type { PublicStatusSnapshot } from "@/modules/status/types";
-import { formatDateTime } from "./format";
+import type { PublicStatusSnapshot, StatusEvent } from "@/modules/status/types";
+import { eventStateLabel, formatDateTime } from "./format";
 import { SubscribeForm } from "./SubscribeForm";
 import { turnstileSiteKey } from "@/modules/subscriptions/turnstile-config";
 import { sortLocalizedByOrder } from "@/modules/status/ordering";
@@ -11,7 +11,27 @@ import { EventCard } from "./EventCard";
 import { ServiceCategories, type ServiceCategoryContent } from "./ServiceCategories";
 import { ServiceStatusBadge } from "./ServiceStatusBadge";
 import { UptimeHistory } from "./UptimeHistory";
+import { eventPreviewExcerpt } from "./event-preview";
 import styles from "./public.module.css";
+
+function EventPreview({ event, locale }: { event: StatusEvent; locale: Locale }) {
+  const t = getDictionary(locale);
+  const href = `/${locale}/${event.kind === "incident" ? "incidents" : "maintenance"}/${event.slug}`;
+  const excerpt = eventPreviewExcerpt(event.summary[locale]);
+  return (
+    <Link className={styles.eventPreview} href={href}>
+      <span className={styles.eventPreviewContent}>
+        <span className={styles.eventPreviewMeta}>
+          <span>{event.kind === "maintenance" ? t.scheduledFor : eventStateLabel(event.state, t)}</span>
+          <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time>
+        </span>
+        <strong>{event.title[locale]}</strong>
+        {excerpt ? <span className={styles.eventPreviewExcerpt}>{excerpt}</span> : null}
+      </span>
+      <ArrowRight className={styles.eventPreviewArrow} size={18} aria-hidden="true" />
+    </Link>
+  );
+}
 
 export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds }: { snapshot: PublicStatusSnapshot; locale: Locale; title: string; collapsedCategoryIds: string[] }) {
   const t = getDictionary(locale);
@@ -38,11 +58,21 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
         <p className={styles.eyebrow}>{t.liveHealth}</p>
         <h1 id="page-title">{title}</h1>
         <p className={styles.intro}>{t.intro}</p>
-        <div className={`${styles.statusBanner} ${styles[overall]}`} role="status">
-          <span className={styles.statusIcon} aria-hidden="true">{overall === "operational" ? <Check /> : <AlertTriangle />}</span>
-          <div><strong>{t.overall[overall]}</strong><span>{t.lastUpdated} <time dateTime={snapshot.lastUpdatedAt}>{formatDateTime(snapshot.lastUpdatedAt, locale)}</time></span></div>
-          <span className={styles.current}><Radio size={14} aria-hidden="true" /> {t.live}</span>
+        <div className={`${styles.statusBanner} ${styles[overall]}`}>
+          <div className={styles.statusHeadline} role="status">
+            <span className={styles.statusIcon} aria-hidden="true">{overall === "operational" ? <Check /> : <AlertTriangle />}</span>
+            <span className={styles.statusCopy}><strong>{t.overall[overall]}</strong><span>{t.lastUpdated} <time dateTime={snapshot.lastUpdatedAt}>{formatDateTime(snapshot.lastUpdatedAt, locale)}</time></span></span>
+            <span className={styles.current}><Radio size={14} aria-hidden="true" /> {t.live}</span>
+          </div>
+          {snapshot.activeIncidents.length ? <div className={styles.eventPreviewList} role="group" aria-label={t.activeTitle}>{snapshot.activeIncidents.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div> : null}
         </div>
+        {snapshot.upcomingMaintenance.length ? <section className={styles.maintenanceBanner} aria-labelledby="maintenance-preview-title">
+          <div className={styles.maintenanceHeadline}>
+            <span className={styles.maintenanceIcon} aria-hidden="true"><CalendarClock /></span>
+            <span><strong id="maintenance-preview-title">{t.maintenanceTitle}</strong><span>{t.maintenancePreviewWindow.replace("{days}", String(snapshot.maintenancePreviewDays))}</span></span>
+          </div>
+          <div className={styles.eventPreviewList}>{snapshot.upcomingMaintenance.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div>
+        </section> : null}
       </section>
 
       <section className={styles.section} aria-labelledby="services-title">
