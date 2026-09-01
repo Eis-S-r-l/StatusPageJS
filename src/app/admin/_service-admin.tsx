@@ -46,10 +46,15 @@ function ServiceForm({ item, categories, onSuccess }: { item?: ServiceItem; cate
     {item && <input type="hidden" name="id" value={item.id} />}
     <label className={styles.field}>Category<select name="categoryId" required defaultValue={stateValue(state, "categoryId", item?.categoryId)}><option value="">Select category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nameEn}</option>)}</select></label>
     <label className={styles.field}>Display order<input name="displayOrder" type="number" min="0" required defaultValue={stateValue(state, "displayOrder", String(item?.displayOrder ?? 0))} /></label>
-    <AutoSlugFields sourceLabel="English name" sourceName="nameEn" sourceDefaultValue={stateValue(state, "nameEn", item?.nameEn)} slugDefaultValue={stateValue(state, "slug", item?.slug)} slugPlaceholder="customer-portal" />
-    <label className={styles.field}>Italian name<input name="nameIt" required defaultValue={stateValue(state, "nameIt", item?.nameIt)} /></label>
-    <label className={styles.field}>English description<textarea name="descriptionEn" defaultValue={stateValue(state, "descriptionEn", item?.descriptionEn)} /></label>
-    <label className={styles.field}>Italian description<textarea name="descriptionIt" defaultValue={stateValue(state, "descriptionIt", item?.descriptionIt)} /></label>
+    <AutoSlugFields
+      sourceLabel="English name"
+      sourceName="nameEn"
+      sourceDefaultValue={stateValue(state, "nameEn", item?.nameEn)}
+      slugDefaultValue={stateValue(state, "slug", item?.slug)}
+      slugPlaceholder="customer-portal"
+      afterSource={<label className={styles.field}>English description<textarea name="descriptionEn" defaultValue={stateValue(state, "descriptionEn", item?.descriptionEn)} /></label>}
+      beforeSlug={<><label className={styles.field}>Italian name<input name="nameIt" required defaultValue={stateValue(state, "nameIt", item?.nameIt)} /></label><label className={styles.field}>Italian description<textarea name="descriptionIt" defaultValue={stateValue(state, "descriptionIt", item?.descriptionIt)} /></label></>}
+    />
     <LocalDateTimeField label="Monitoring started" name="monitoringStartedAt" required defaultValue={stateValue(state, "monitoringStartedAt", item?.monitoringStartedAt)} />
     <FormStatus state={state} />
     <button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Saving…" : item ? "Save service" : "Create service"}</button>
