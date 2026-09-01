@@ -51,6 +51,13 @@ export async function confirmEmailSubscription(token: string): Promise<"en" | "i
   return updated?.language ?? null;
 }
 
+export async function pendingEmailSubscriptionLocale(token: string): Promise<"en" | "it" | null> {
+  const validSince = new Date(Date.now() - 7 * 24 * 60 * 60_000);
+  const [subscription] = await getDb().select({ language: subscriptions.language }).from(subscriptions)
+    .where(and(eq(subscriptions.confirmationTokenHash, hashSubscriptionToken(token)), gt(subscriptions.updatedAt, validSince))).limit(1);
+  return subscription?.language ?? null;
+}
+
 export async function requestEmailUnsubscription(input: { email: string; language: "en" | "it" }): Promise<void> {
   const email = input.email.trim().toLowerCase();
   const db = getDb();

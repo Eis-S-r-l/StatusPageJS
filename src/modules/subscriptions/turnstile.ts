@@ -31,7 +31,7 @@ export async function verifyTurnstileToken({
   remoteIp,
 }: {
   token: string;
-  expectedAction: "subscribe" | "unsubscribe";
+  expectedAction: "subscribe" | "confirm_subscription" | "unsubscribe";
   remoteIp?: string;
 }): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET?.trim();

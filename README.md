@@ -177,7 +177,7 @@ Passwords, MFA responses, Cognito tokens, the Cognito client secret, and `SESSIO
 
 ## Cloudflare Turnstile setup
 
-The public email subscription and unsubscription forms use the existing Turnstile widget with site key `0x4AAAAAAEdj1rvMcjmnbsjH`. The browser renders the challenge, but the Next.js API always validates the resulting single-use token with Cloudflare before it queues an email. Tokens are also checked against the exact `subscribe` or `unsubscribe` action and an approved frontend hostname.
+The public email subscription and unsubscription forms use the existing Turnstile widget with site key `0x4AAAAAAEdj1rvMcjmnbsjH`. Email subscription confirmation links also open a second Turnstile-protected form instead of activating the subscription on page load. The confirmation link remains usable until its seven-day expiry and is consumed only after the visitor passes that check and presses **Confirm subscription**. The browser renders each challenge, but the Next.js API always validates the resulting single-use token with Cloudflare before it queues an email or confirms a subscription. Tokens are also checked against the exact `subscribe`, `confirm_subscription`, or `unsubscribe` action and an approved frontend hostname.
 
 In the Cloudflare dashboard, open the existing widget and confirm that its hostname list contains every hostname where the public forms will run. Obtain the widget secret from the dashboard and place it directly in the deployment's ignored `.env` file; do not commit it or paste it into chat:
 
