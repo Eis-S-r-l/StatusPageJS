@@ -426,14 +426,13 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
   const activeIncidents = incidentEvents.filter(
     (event) => event.endsAt === null && event.state !== "resolved",
   );
-  const maintenancePreviewEnd = model.now.getTime() + model.maintenancePreviewDays * DAY_MS;
   const upcomingMaintenance = maintenanceEvents.filter((event) => {
-    const start = Date.parse(event.startsAt);
     const end = event.endsAt ? Date.parse(event.endsAt) : Number.POSITIVE_INFINITY;
     return (event.state === "scheduled" || event.state === "in_progress")
-      && start <= maintenancePreviewEnd
       && end >= model.now.getTime();
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const maintenancePreviewEnd = model.now.getTime() + model.maintenancePreviewDays * DAY_MS;
+  const maintenancePreview = upcomingMaintenance.filter((event) => Date.parse(event.startsAt) <= maintenancePreviewEnd);
   const recentEvents = [...incidentEvents, ...maintenanceEvents]
     .filter((event) => {
       if (event.kind === "incident") return event.endsAt !== null;
@@ -464,6 +463,7 @@ export function buildStatusSnapshot(model: StatusReadModel): PublicStatusSnapsho
     maintenancePreviewDays: model.maintenancePreviewDays,
     categories: publicCategories,
     activeIncidents,
+    maintenancePreview,
     upcomingMaintenance,
     recentEvents,
   };
@@ -487,7 +487,6 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
     const maintenancePreviewDays = settings?.maintenancePreviewDays ?? 7;
     const publicTimezone = settings?.publicTimezone ?? FALLBACK_PUBLIC_TIMEZONE;
     const historySince = new Date(now.getTime() - (uptimeIntervalDays + 1) * DAY_MS);
-    const upcomingUntil = new Date(now.getTime() + maintenancePreviewDays * DAY_MS);
 
     const [categoryRows, serviceRows, incidentRows, maintenanceRows] =
       await Promise.all([
@@ -503,7 +502,7 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
           .where(and(eq(incidents.isPublished, true), isNull(incidents.archivedAt), lte(incidents.startedAt, now), or(isNull(incidents.resolvedAt), gte(incidents.resolvedAt, historySince))))
           .orderBy(desc(incidents.startedAt)),
         this.db.select({ id: maintenances.id, slug: maintenances.slug, titleEn: maintenances.titleEn, titleIt: maintenances.titleIt, descriptionEn: maintenances.descriptionEn, descriptionIt: maintenances.descriptionIt, status: maintenances.status, scheduledStartAt: maintenances.scheduledStartAt, scheduledEndAt: maintenances.scheduledEndAt, actualStartAt: maintenances.actualStartAt, actualEndAt: maintenances.actualEndAt, publishedAt: maintenances.publishedAt, updatedAt: maintenances.updatedAt }).from(maintenances)
-          .where(and(eq(maintenances.isPublished, true), isNull(maintenances.archivedAt), lte(maintenances.scheduledStartAt, upcomingUntil), or(eq(maintenances.status, "in_progress"), gte(sql`coalesce(${maintenances.actualEndAt}, ${maintenances.scheduledEndAt})`, historySince))))
+          .where(and(eq(maintenances.isPublished, true), isNull(maintenances.archivedAt), or(eq(maintenances.status, "in_progress"), gte(sql`coalesce(${maintenances.actualEndAt}, ${maintenances.scheduledEndAt})`, historySince))))
           .orderBy(desc(maintenances.scheduledStartAt)),
       ]);
 

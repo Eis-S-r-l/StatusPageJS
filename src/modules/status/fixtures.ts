@@ -24,4 +24,4 @@ export const eventsFixture: StatusEvent[] = [
     { id: "notification-1", state: "investigating", effectiveAt: "2026-07-30T12:11:00Z", message: { en: "We are investigating delayed email notifications.", it: "Stiamo analizzando ritardi nelle notifiche email." } },
   ] },
 ];
-export const snapshotFixture: PublicStatusSnapshot = { overallState: "degraded", lastUpdatedAt: "2026-08-26T10:18:00Z", uptimeIntervalDays: 30, maintenancePreviewDays: 7, categories: categoriesFixture, activeIncidents: [eventsFixture[0]], upcomingMaintenance: [eventsFixture[1]], recentEvents: [eventsFixture[2]] };
+export const snapshotFixture: PublicStatusSnapshot = { overallState: "degraded", lastUpdatedAt: "2026-08-26T10:18:00Z", uptimeIntervalDays: 30, maintenancePreviewDays: 7, categories: categoriesFixture, activeIncidents: [eventsFixture[0]], maintenancePreview: [eventsFixture[1]], upcomingMaintenance: [eventsFixture[1]], recentEvents: [eventsFixture[2]] };

@@ -11,6 +11,7 @@ import { EventCard } from "./EventCard";
 import { ServiceCategories, type ServiceCategoryContent } from "./ServiceCategories";
 import { ServiceStatusBadge } from "./ServiceStatusBadge";
 import { UptimeHistory } from "./UptimeHistory";
+import { UpcomingMaintenanceList } from "./UpcomingMaintenanceList";
 import { eventPreviewExcerpt } from "./event-preview";
 import styles from "./public.module.css";
 
@@ -66,12 +67,12 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
           </div>
           {snapshot.activeIncidents.length ? <div className={styles.eventPreviewList} role="group" aria-label={t.activeTitle}>{snapshot.activeIncidents.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div> : null}
         </div>
-        {snapshot.upcomingMaintenance.length ? <section className={styles.maintenanceBanner} aria-labelledby="maintenance-preview-title">
+        {snapshot.maintenancePreview.length ? <section className={styles.maintenanceBanner} aria-labelledby="maintenance-preview-title">
           <div className={styles.maintenanceHeadline}>
             <span className={styles.maintenanceIcon} aria-hidden="true"><CalendarClock /></span>
             <span><strong id="maintenance-preview-title">{t.maintenanceTitle}</strong><span>{t.maintenancePreviewWindow.replace("{days}", String(snapshot.maintenancePreviewDays))}</span></span>
           </div>
-          <div className={styles.eventPreviewList}>{snapshot.upcomingMaintenance.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div>
+          <div className={styles.eventPreviewList}>{snapshot.maintenancePreview.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div>
         </section> : null}
       </section>
 
@@ -90,7 +91,7 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
 
       <section className={styles.section} aria-labelledby="maintenance-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.maintenanceEyebrow}</p><h2 id="maintenance-title">{t.maintenanceTitle}</h2></div><CalendarClock aria-hidden="true" /></div>
-        {snapshot.upcomingMaintenance.length ? <div className={styles.eventList}>{snapshot.upcomingMaintenance.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div> : <div className={styles.empty}>{t.noMaintenance}</div>}
+        {snapshot.upcomingMaintenance.length ? <UpcomingMaintenanceList events={snapshot.upcomingMaintenance} locale={locale} /> : <div className={styles.empty}>{t.noMaintenance}</div>}
       </section>
 
       <section className={styles.section} aria-labelledby="recent-title">

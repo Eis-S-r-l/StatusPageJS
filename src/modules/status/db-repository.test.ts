@@ -216,7 +216,7 @@ describe("buildStatusSnapshot", () => {
     ]);
   });
 
-  it("limits upcoming maintenance to the configured preview window", () => {
+  it("limits the header preview without limiting the upcoming maintenance list", () => {
     const model = baseModel();
     model.maintenancePreviewDays = 7;
     model.maintenances.push(
@@ -252,8 +252,13 @@ describe("buildStatusSnapshot", () => {
       },
     );
 
-    expect(buildStatusSnapshot(model).upcomingMaintenance.map((event) => event.slug)).toEqual([
+    const snapshot = buildStatusSnapshot(model);
+    expect(snapshot.maintenancePreview.map((event) => event.slug)).toEqual([
       "inside-window",
+    ]);
+    expect(snapshot.upcomingMaintenance.map((event) => event.slug)).toEqual([
+      "inside-window",
+      "outside-window",
     ]);
   });
 
