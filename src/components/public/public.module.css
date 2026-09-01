@@ -109,6 +109,11 @@
 .eventCard h3 { margin: 15px 0 7px; font-family: var(--font-display), sans-serif; font-size: 1.13rem; }
 .eventCard h3 a { color: inherit; text-decoration: none; }
 .eventCard h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.upcomingMaintenanceExcerpt { margin: 0; color: var(--color-muted); font-size: .88rem; line-height: 1.6; }
+.upcomingMaintenanceActions { display: flex; justify-content: flex-end; margin-top: 18px; }
+.upcomingMaintenanceActions a { display: inline-flex; align-items: center; gap: 5px; padding: 9px 13px; border-radius: 8px; color: var(--color-primary-text); background: var(--color-primary); font-size: .78rem; font-weight: 750; text-decoration: none; }
+.upcomingMaintenanceActions a:hover { filter: brightness(.94); }
+.upcomingMaintenanceActions a:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent); outline-offset: 2px; }
 .richText { color: var(--color-muted); font-size: .88rem; line-height: 1.6; }
 .richText > :first-child { margin-top: 0; }
 .richText > :last-child { margin-bottom: 0; }
