@@ -5,12 +5,14 @@ import { getDictionary } from "@/modules/i18n/dictionaries";
 import type { StatusEvent } from "@/modules/status/types";
 import { SafeRichText } from "@/components/content/SafeRichText";
 import { EventDuration } from "./EventDuration";
+import { MaintenanceCalendarActions } from "./MaintenanceCalendarActions";
 import { eventStateLabel, formatDateTime } from "./format";
 import styles from "./public.module.css";
 
 export function EventDetail({ event, locale }: { event: StatusEvent; locale: Locale }) {
   const t = getDictionary(locale);
   const renderedAt = new Date().toISOString();
+  const canAddToCalendar = event.kind === "maintenance" && event.state === "scheduled" && event.endsAt !== null && Date.parse(event.startsAt) > Date.parse(renderedAt);
   return (
     <main className={styles.detailMain} id="main-content">
       <Link className={styles.back} href={`/${locale}`}><ArrowLeft size={17} aria-hidden="true" />{t.back}</Link>
@@ -19,6 +21,7 @@ export function EventDetail({ event, locale }: { event: StatusEvent; locale: Loc
           <div className={styles.detailKicker}><span>{event.kind === "incident" ? t.incident : t.maintenance}</span><span className={`${styles.eventState} ${styles[event.state]}`}>{eventStateLabel(event.state, t)}</span></div>
           <h1>{event.title[locale]}</h1>
           <SafeRichText html={event.summary[locale]} className={styles.richText} />
+          {canAddToCalendar ? <MaintenanceCalendarActions event={event} locale={locale} /> : null}
         </header>
         <dl className={styles.facts}>
           <div><dt><Calendar size={16} aria-hidden="true" />{t.started}</dt><dd><time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time></dd></div>

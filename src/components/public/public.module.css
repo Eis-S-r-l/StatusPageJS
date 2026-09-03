@@ -27,6 +27,7 @@
 .historyCrossLink, .historyLinks { display: inline-flex; align-items: center; gap: 7px; color: var(--color-primary); font-size: .84rem; font-weight: 750; text-decoration: none; }
 .historyLinks { gap: 14px; }
 .historyLinks a { color: inherit; text-decoration: none; }
+.historyHeroActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
 .eyebrow { margin: 0 0 10px; color: var(--color-primary); font-size: .72rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .hero h1, .detailHeader h1 { margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(2.5rem, 6vw, 4.6rem); line-height: 1.04; letter-spacing: -.055em; }
 .intro { max-width: 610px; margin: 18px 0 30px; color: var(--color-muted); font-size: 1.07rem; line-height: 1.65; }
@@ -54,7 +55,7 @@
 .maintenanceIcon { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: var(--color-primary-text); background: var(--color-primary); }
 .maintenanceIcon svg { width: 19px; }
 .section { padding: 42px 0; }
-.sectionHeading { min-height: 46px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: end; color: var(--color-muted); }
+.sectionHeading { min-height: 46px; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 14px; color: var(--color-muted); }
 .sectionHeading h2, .subscribePanel h2, .timelineSection h2 { margin: 0; color: var(--color-text); font-family: var(--font-display), sans-serif; font-size: 1.7rem; letter-spacing: -.03em; }
 .sectionHeading > span { font-size: .84rem; }
 .legend { margin: -7px 0 15px; display: flex; flex-wrap: wrap; gap: 12px; color: var(--color-muted); font-size: .69rem; }
@@ -158,6 +159,34 @@
 .detailKicker { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: var(--color-primary); font-size: .73rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .detailHeader h1 { font-size: clamp(2.3rem, 5vw, 3.8rem); }
 .detailHeader > p { max-width: 680px; margin: 18px 0 0; color: var(--color-muted); font-size: 1.03rem; line-height: 1.65; }
+.detailActions { margin-top: 24px; display: flex; align-items: center; }
+.calendarActionMenu, .calendarSubscription { position: relative; color: var(--color-text); }
+.calendarActionMenu > summary, .calendarSubscription > summary { display: inline-flex; align-items: center; gap: 7px; padding: 10px 13px; border-radius: 9px; font-size: .8rem; font-weight: 750; line-height: 1.2; list-style: none; cursor: pointer; user-select: none; }
+.calendarActionMenu > summary::-webkit-details-marker, .calendarSubscription > summary::-webkit-details-marker { display: none; }
+.calendarActionMenu > summary { border: 1px solid var(--color-primary); color: var(--color-primary-text); background: var(--color-primary); }
+.calendarSubscription > summary { border: 1px solid color-mix(in srgb, var(--color-primary) 45%, var(--color-border)); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
+.calendarActionMenu > summary:focus-visible, .calendarSubscription > summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-primary) 30%, transparent); outline-offset: 2px; }
+.calendarMenuChevron { transition: transform .16s ease; }
+.calendarActionMenu[open] .calendarMenuChevron, .calendarSubscription[open] .calendarMenuChevron { transform: rotate(180deg); }
+.calendarActionPopover, .calendarSubscriptionPopover { position: absolute; top: calc(100% + 8px); z-index: 20; border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text); background: var(--color-surface); box-shadow: 0 18px 55px color-mix(in srgb, var(--color-text) 18%, transparent); }
+.calendarActionPopover { left: 0; width: 240px; padding: 6px; }
+.calendarActionPopover a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 11px; border-radius: 7px; color: var(--color-text); font-size: .8rem; font-weight: 700; text-decoration: none; }
+.calendarActionPopover a:hover { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); }
+.calendarActionPopover a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -1px; }
+.calendarSubscriptionPopover { right: 0; width: min(390px, calc(100vw - 40px)); padding: 18px; }
+.calendarSubscriptionPopover > strong { display: block; font-family: var(--font-display), sans-serif; font-size: .95rem; }
+.calendarSubscriptionPopover > p { margin: 6px 0 0; color: var(--color-muted); font-size: .75rem; line-height: 1.5; }
+.calendarSubscriptionProviders { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.calendarSubscriptionProviders button, .calendarSubscriptionProviders a { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); background: var(--color-surface); font: inherit; font-size: .72rem; font-weight: 750; text-align: center; text-decoration: none; cursor: pointer; }
+.calendarSubscriptionProviders a:last-child { grid-column: 1 / -1; }
+.calendarSubscriptionProviders button:hover, .calendarSubscriptionProviders a:hover { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)); }
+.calendarSubscriptionProviders button:focus-visible, .calendarSubscriptionProviders a:focus-visible, .calendarFeedField button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.calendarFeedField { margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 38px; }
+.calendarFeedField input { min-width: 0; height: 38px; padding: 8px 10px; border: 1px solid var(--color-border); border-right: 0; border-radius: 8px 0 0 8px; color: var(--color-muted); background: var(--color-background); font: inherit; font-size: .7rem; outline: none; }
+.calendarFeedField input:focus { border-color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); }
+.calendarFeedField button { width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid var(--color-primary); border-radius: 0 8px 8px 0; color: var(--color-primary-text); background: var(--color-primary); cursor: pointer; }
+.calendarSubscriptionPopover .calendarSubscriptionHint { margin-top: 10px; font-size: .68rem; }
+.calendarSubscriptionPopover .calendarCopyStatus { min-height: 17px; display: flex; align-items: center; gap: 5px; color: var(--color-success); font-size: .68rem; }
 .facts { margin: 35px 0 48px; display: grid; grid-template-columns: repeat(2,1fr); overflow: hidden; border: 1px solid var(--color-border); border-radius: 13px; background: var(--color-surface); }
 .facts > div { padding: 17px 19px; border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
 .facts > div:nth-child(2n) { border-right: 0; }
@@ -171,7 +200,7 @@
 .timelineDot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 4px; border: 3px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-surface)); border-radius: 50%; background: var(--color-primary); }
 .timelineMeta strong { font-size: .82rem; }
 .timeline p { margin: 7px 0 0; color: var(--color-muted); font-size: .86rem; line-height: 1.6; }
-@media (hover:hover) { .subscribe, .adminAccess, .language, .themeToggle, .back, .eventFooter a, .eventPreview { transition: transform .16s ease, opacity .16s ease; } .subscribe:hover, .adminAccess:hover, .themeToggle:hover, .back:hover, .eventFooter a:hover, .eventPreview:hover { transform: translateY(-1px); } .language:hover { opacity: .72; } }
+@media (hover:hover) { .subscribe, .adminAccess, .language, .themeToggle, .back, .eventFooter a, .eventPreview, .calendarActionMenu > summary, .calendarSubscription > summary { transition: transform .16s ease, opacity .16s ease; } .subscribe:hover, .adminAccess:hover, .themeToggle:hover, .back:hover, .eventFooter a:hover, .eventPreview:hover, .calendarActionMenu > summary:hover, .calendarSubscription > summary:hover { transform: translateY(-1px); } .language:hover { opacity: .72; } }
 @media (max-width: 640px) {
   .header { width: calc(100% - 24px); height: 70px; } .brandLogo { max-width: 96px; max-height: 36px; } .headerActions, .adminEntry, .actions { gap: 6px; } .headerDivider { height: 36px; } .themeToggle, .language, .adminAccess, .subscribe { width: 36px; height: 36px; flex: 0 0 36px; justify-content: center; padding: 0; } .language { font-size: 0; } .language svg { width: 20px; height: 20px; } .subscribe span { display: none; }
   .hero, .historyHero { padding-top: 52px; } .current { display: none; } .section { padding-block: 32px; } .sectionHeading { align-items: center; } .historyLinks { align-items: flex-end; flex-direction: column; gap: 5px; }
@@ -179,6 +208,7 @@
   .eventFooter { align-items: end; } .eventFooter > span { max-width: 62%; } .subscribePanel { margin-block: 32px 48px; padding: 24px; align-items: flex-start; flex-direction: column; }
   .subscriptionForm { width: 100%; grid-template-columns: 1fr; } .subscriptionForm button, .subscriptionChoices, .turnstileField, .subscriptionForm .formMessage, .subscriptionForm .formError, .botLinks { grid-column: 1; }
   .footer { flex-direction: column; } .facts { grid-template-columns: 1fr; } .facts > div { border-right: 0; } .facts > div:nth-last-child(-n+2) { border-bottom: 1px solid var(--color-border); } .facts > div:last-child { border-bottom: 0; }
+  .historyHeroActions { align-items: flex-start; flex-direction: column; } .calendarSubscriptionPopover { right: auto; left: 0; } .calendarActionPopover { width: min(240px, calc(100vw - 40px)); }
   .timelineMeta { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
-@media (prefers-reduced-motion: reduce) { .subscribe, .adminAccess, .language, .themeToggle, .back, .eventFooter a, .eventPreview, .categoryChevron, .categoryChevronCollapsed { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .subscribe, .adminAccess, .language, .themeToggle, .back, .eventFooter a, .eventPreview, .categoryChevron, .categoryChevronCollapsed, .calendarActionMenu > summary, .calendarSubscription > summary, .calendarMenuChevron { transition: none; } }

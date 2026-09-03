@@ -1,6 +1,6 @@
 import { DatabasePublicStatusRepository } from "./db-repository";
 import { eventsFixture, snapshotFixture } from "./fixtures";
-import type { PaginatedStatusEvents, PublicStatusRepository, StatusEvent } from "./types";
+import type { CalendarMaintenanceEvent, PaginatedStatusEvents, PublicStatusRepository, StatusEvent } from "./types";
 
 export function paginatePublicEvents(events: StatusEvent[], page: number, pageSize: number): PaginatedStatusEvents {
   const safePageSize = Number.isSafeInteger(pageSize) && pageSize > 0 ? pageSize : 1;
@@ -26,12 +26,11 @@ class FixturePublicStatusRepository implements PublicStatusRepository {
     );
   }
 
-  async getMaintenance(slug: string): Promise<StatusEvent | null> {
-    return (
-      eventsFixture.find(
-        (event) => event.kind === "maintenance" && event.slug === slug,
-      ) ?? null
+  async getMaintenance(slug: string): Promise<CalendarMaintenanceEvent | null> {
+    const event = eventsFixture.find(
+      (candidate) => candidate.kind === "maintenance" && candidate.slug === slug,
     );
+    return event ? fixtureCalendarMaintenance(event) : null;
   }
 
   async listIncidents(page: number, pageSize: number): Promise<PaginatedStatusEvents> {
@@ -41,6 +40,22 @@ class FixturePublicStatusRepository implements PublicStatusRepository {
   async listMaintenances(page: number, pageSize: number): Promise<PaginatedStatusEvents> {
     return paginatePublicEvents(eventsFixture.filter((event) => event.kind === "maintenance"), page, pageSize);
   }
+
+  async listCalendarMaintenances(): Promise<CalendarMaintenanceEvent[]> {
+    return eventsFixture.flatMap((event) => event.kind === "maintenance" ? [fixtureCalendarMaintenance(event)] : []);
+  }
+}
+
+function fixtureCalendarMaintenance(event: StatusEvent): CalendarMaintenanceEvent {
+  if (event.kind !== "maintenance" || !event.endsAt) throw new Error("Maintenance calendar fixtures need a scheduled end");
+  return {
+    ...event,
+    kind: "maintenance",
+    calendarId: `fixture-${event.slug}`,
+    scheduledStartsAt: event.startsAt,
+    scheduledEndsAt: event.endsAt,
+    updatedAt: event.timeline[0]?.effectiveAt ?? event.startsAt,
+  };
 }
 
 // Fixtures are intentionally a development/test convenience. A production

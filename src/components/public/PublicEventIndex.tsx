@@ -4,6 +4,8 @@ import type { Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import type { PaginatedStatusEvents } from "@/modules/status/types";
 import { EventCard } from "./EventCard";
+import { MaintenanceCalendarSubscription } from "./MaintenanceCalendarSubscription";
+import { maintenanceFeedUrl } from "@/modules/calendar/maintenance-calendar";
 import styles from "./public.module.css";
 
 type EventKind = "incident" | "maintenance";
@@ -27,7 +29,10 @@ export function PublicEventIndex({ locale, kind, result }: { locale: Locale; kin
         <p className={styles.eyebrow}>{eyebrow}</p>
         <h1 id="page-title">{title}</h1>
         <p className={styles.intro}>{isIncident ? t.incidentsIntro : t.maintenanceHistoryIntro}</p>
-        <Link className={styles.historyCrossLink} href={pageHref(otherPath, result.page)}>{otherLabel} <ArrowRight size={16} aria-hidden="true" /></Link>
+        <div className={styles.historyHeroActions}>
+          <Link className={styles.historyCrossLink} href={pageHref(otherPath, result.page)}>{otherLabel} <ArrowRight size={16} aria-hidden="true" /></Link>
+          {!isIncident ? <MaintenanceCalendarSubscription feedUrl={maintenanceFeedUrl(locale)} locale={locale} /> : null}
+        </div>
       </section>
       <section className={styles.section} aria-label={title}>
         {result.events.length ? <div className={styles.eventList}>{result.events.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div> : <div className={styles.empty}>{empty}</div>}

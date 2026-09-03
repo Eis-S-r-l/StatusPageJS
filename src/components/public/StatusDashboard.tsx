@@ -13,6 +13,8 @@ import { ServiceStatusBadge } from "./ServiceStatusBadge";
 import { UptimeHistory } from "./UptimeHistory";
 import { UpcomingMaintenanceList } from "./UpcomingMaintenanceList";
 import { eventPreviewExcerpt } from "./event-preview";
+import { MaintenanceCalendarSubscription } from "./MaintenanceCalendarSubscription";
+import { maintenanceFeedUrl } from "@/modules/calendar/maintenance-calendar";
 import styles from "./public.module.css";
 
 function EventPreview({ event, locale }: { event: StatusEvent; locale: Locale }) {
@@ -90,7 +92,7 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
       </section>
 
       <section className={styles.section} aria-labelledby="maintenance-title">
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.maintenanceEyebrow}</p><h2 id="maintenance-title">{t.maintenanceTitle}</h2></div><CalendarClock aria-hidden="true" /></div>
+        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.maintenanceEyebrow}</p><h2 id="maintenance-title">{t.maintenanceTitle}</h2></div><MaintenanceCalendarSubscription feedUrl={maintenanceFeedUrl(locale)} locale={locale} /></div>
         {snapshot.upcomingMaintenance.length ? <UpcomingMaintenanceList events={snapshot.upcomingMaintenance} locale={locale} /> : <div className={styles.empty}>{t.noMaintenance}</div>}
       </section>
 

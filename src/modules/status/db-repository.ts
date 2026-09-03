@@ -28,6 +28,7 @@ import {
 
 import type {
   AffectedService,
+  CalendarMaintenanceEvent,
   DayEvent,
   PaginatedStatusEvents,
   PublicStatusRepository,
@@ -173,7 +174,7 @@ function mapMaintenance(
   row: MaintenanceRow,
   associations: readonly Association[],
   updates: TimelineEntry[] = [],
-): StatusEvent {
+): CalendarMaintenanceEvent {
   const bounds = maintenanceBounds(row);
   const timeline = (updates.length ? updates : [{
       id: `maintenance-${row.id}`,
@@ -183,12 +184,16 @@ function mapMaintenance(
     } satisfies TimelineEntry]).sort((a, b) => Date.parse(b.effectiveAt) - Date.parse(a.effectiveAt));
   return {
     kind: "maintenance",
+    calendarId: row.id,
     slug: row.slug,
     title: { en: row.titleEn, it: row.titleIt },
     summary: { en: row.descriptionEn, it: row.descriptionIt },
     state: row.status,
     startsAt: toIso(bounds.start),
     endsAt: bounds.end ? toIso(bounds.end) : null,
+    scheduledStartsAt: toIso(row.scheduledStartAt),
+    scheduledEndsAt: toIso(row.scheduledEndAt),
+    updatedAt: toIso(row.updatedAt),
     affectedServices: mapAffectedServices(associations),
     affectsUptime: associations.some((item) => item.affectsUptime),
     timeline,
@@ -544,7 +549,7 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
     return mapIncident({ ...row, publishedAt: row.publishedAt }, links, timeline);
   }
 
-  async getMaintenance(slug: string): Promise<StatusEvent | null> {
+  async getMaintenance(slug: string): Promise<CalendarMaintenanceEvent | null> {
     const [row] = await this.db.select({ id: maintenances.id, slug: maintenances.slug, titleEn: maintenances.titleEn, titleIt: maintenances.titleIt, descriptionEn: maintenances.descriptionEn, descriptionIt: maintenances.descriptionIt, status: maintenances.status, scheduledStartAt: maintenances.scheduledStartAt, scheduledEndAt: maintenances.scheduledEndAt, actualStartAt: maintenances.actualStartAt, actualEndAt: maintenances.actualEndAt, publishedAt: maintenances.publishedAt, updatedAt: maintenances.updatedAt }).from(maintenances)
       .where(and(eq(maintenances.slug, slug), eq(maintenances.isPublished, true), isNull(maintenances.archivedAt))).limit(1);
     if (!row?.publishedAt) return null;
@@ -590,5 +595,17 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
     const links = ids.length ? await this.db.select({ eventId: maintenanceServices.maintenanceId, serviceId: maintenanceServices.serviceId, affectsUptime: maintenanceServices.affectsUptime, serviceSlug: services.slug, serviceNameEn: services.nameEn, serviceNameIt: services.nameIt }).from(maintenanceServices).innerJoin(services, eq(maintenanceServices.serviceId, services.id)).where(inArray(maintenanceServices.maintenanceId, ids)) : [];
     const byEvent = groupAssociations(links);
     return { events: rows.flatMap((row) => row.publishedAt ? [mapMaintenance({ ...row, publishedAt: row.publishedAt }, byEvent.get(row.id) ?? [])] : []), page: currentPage, pageSize: safePageSize, totalItems, totalPages };
+  }
+
+  async listCalendarMaintenances(): Promise<CalendarMaintenanceEvent[]> {
+    const historySince = new Date(Date.now() - 90 * DAY_MS);
+    const rows = await this.db.select({ id: maintenances.id, slug: maintenances.slug, titleEn: maintenances.titleEn, titleIt: maintenances.titleIt, descriptionEn: maintenances.descriptionEn, descriptionIt: maintenances.descriptionIt, status: maintenances.status, scheduledStartAt: maintenances.scheduledStartAt, scheduledEndAt: maintenances.scheduledEndAt, actualStartAt: maintenances.actualStartAt, actualEndAt: maintenances.actualEndAt, publishedAt: maintenances.publishedAt, updatedAt: maintenances.updatedAt }).from(maintenances)
+      .where(and(eq(maintenances.isPublished, true), isNull(maintenances.archivedAt), or(eq(maintenances.status, "in_progress"), gte(sql`coalesce(${maintenances.actualEndAt}, ${maintenances.scheduledEndAt})`, historySince))))
+      .orderBy(asc(maintenances.scheduledStartAt), asc(maintenances.id));
+    const publishedRows = rows.filter((row): row is typeof row & { publishedAt: Date } => row.publishedAt !== null);
+    const ids = publishedRows.map((row) => row.id);
+    const links = ids.length ? await this.db.select({ eventId: maintenanceServices.maintenanceId, serviceId: maintenanceServices.serviceId, affectsUptime: maintenanceServices.affectsUptime, serviceSlug: services.slug, serviceNameEn: services.nameEn, serviceNameIt: services.nameIt }).from(maintenanceServices).innerJoin(services, eq(maintenanceServices.serviceId, services.id)).where(inArray(maintenanceServices.maintenanceId, ids)) : [];
+    const byEvent = groupAssociations(links);
+    return publishedRows.map((row) => mapMaintenance(row, byEvent.get(row.id) ?? []));
   }
 }

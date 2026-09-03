@@ -388,6 +388,12 @@ The public English and Italian pages provide both subscription and unsubscriptio
 
 Incident and maintenance notifications use the configured company name and dark-header logo, contain localized event details, and include the localized unsubscription-page link. The worker always sends a plain-text alternative alongside the HTML message.
 
+## Calendar integration
+
+Scheduled maintenance detail pages provide pre-filled Google Calendar and Outlook actions plus a standard `.ics` download. The public maintenance index and dashboard also expose a subscribable calendar feed at `/{locale}/maintenance/calendar.ics`; calendar providers use stable maintenance IDs and revision timestamps to apply reschedules and cancellations.
+
+Set `APP_URL` to the public HTTPS origin before publishing the feed. Google Calendar and Outlook retrieve subscription feeds from their own servers, so the URL must be publicly reachable without authentication. Provider-controlled refreshes are not immediate and should not replace time-sensitive incident or maintenance notifications.
+
 ## Appearance and branding
 
 Authenticated administrators can use `/admin/settings` to set the persisted public status-page title, and `/admin/appearance` to:
