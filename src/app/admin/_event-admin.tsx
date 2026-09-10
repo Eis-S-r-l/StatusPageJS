@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { archiveEvent, createIncident, createMaintenance, deleteIncidentUpdate, editIncident, editIncidentUpdate, editMaintenance, updateIncident, updateMaintenance } from "@/modules/admin/actions";
+import { archiveEvent, createIncident, createMaintenance, deleteIncidentUpdate, editIncident, editIncidentUpdate, editMaintenance, editMaintenanceUpdate, updateIncident, updateMaintenance } from "@/modules/admin/actions";
 import { INITIAL_EVENT_ACTION_STATE, type EventActionState } from "@/modules/admin/event-validation";
 import { LocalDateTimeField, RichTextField } from "./_event-fields";
 import { DialogForm } from "./_dialog-form";
@@ -24,7 +24,11 @@ type IncidentUpdateItem = {
 type MaintenanceItem = {
   id: string; slug: string; titleEn: string; titleIt: string; descriptionEn: string; descriptionIt: string;
   status: MaintenanceStatus; scheduledStartAt: string; scheduledEndAt: string; actualStartAt: string | null; actualEndAt: string | null;
-  isPublished: boolean; serviceIds: string[]; uptimeServiceIds: string[]; updates: { id: string }[];
+  isPublished: boolean; serviceIds: string[]; uptimeServiceIds: string[]; updates: MaintenanceUpdateItem[];
+};
+type MaintenanceUpdateItem = {
+  id: string; status: MaintenanceStatus; messageEn: string; messageIt: string;
+  effectiveAt: string; publishedAt: string | null;
 };
 
 function stateValue(state: EventActionState, key: string, fallback = "") {
@@ -283,10 +287,48 @@ export function MaintenanceAdmin({ services, current, past, defaultAffectsUptime
   </>;
 }
 
+function MaintenanceUpdateEditForm({ maintenance, update, onSuccess }: { maintenance: MaintenanceItem; update: MaintenanceUpdateItem; onSuccess?: () => void }) {
+  const [state, formAction, pending] = useActionState(editMaintenanceUpdate, INITIAL_EVENT_ACTION_STATE);
+  useEffect(() => { if (state.status === "success") onSuccess?.(); }, [onSuccess, state.submissionId, state.status]);
+  return <form action={formAction} className={`${styles.form} ${styles.updateEditForm}`}>
+    <input type="hidden" name="maintenanceId" value={maintenance.id} />
+    <input type="hidden" name="updateId" value={update.id} />
+    <label className={styles.field}>Status<select name="status" defaultValue={stateValue(state, "status", update.status)}><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+    <LocalDateTimeField label="Update date and time" name="effectiveAt" required defaultValue={stateValue(state, "effectiveAt", update.effectiveAt)} />
+    <RichTextField label="English update" name="messageEn" required defaultValue={stateValue(state, "messageEn", update.messageEn)} />
+    <RichTextField label="Italian update" name="messageIt" required defaultValue={stateValue(state, "messageIt", update.messageIt)} />
+    <p className={`${styles.fieldHint} ${styles.full}`}>Corrections are not sent to subscribers. Use Update status to change the maintenance’s current status, or edit the maintenance separately to correct its timing.</p>
+    <FormStatus state={state} />
+    <button className={`${styles.button} ${styles.full}`} disabled={pending}>{pending ? "Saving…" : "Save timeline update"}</button>
+  </form>;
+}
+
+function MaintenanceUpdateRow({ maintenance, update, onSuccess }: { maintenance: MaintenanceItem; update: MaintenanceUpdateItem; onSuccess?: () => void }) {
+  const [editing, setEditing] = useState(false);
+  return <div className={styles.updateRow}>
+    <div className={styles.updateSummary}>
+      <strong>{update.status}</strong>
+      <small><LocalTime value={update.effectiveAt} /> · {update.publishedAt ? "Published" : "Draft"}</small>
+    </div>
+    <div className={styles.rowActions}>
+      <button type="button" className={styles.secondaryButton} aria-expanded={editing} onClick={() => setEditing((current) => !current)}>{editing ? "Cancel edit" : "Edit"}</button>
+    </div>
+    {editing && <MaintenanceUpdateEditForm maintenance={maintenance} update={update} onSuccess={onSuccess} />}
+  </div>;
+}
+
+function MaintenanceUpdateManager({ item, onSuccess }: { item: MaintenanceItem; onSuccess?: () => void }) {
+  return <div>
+    <p className={styles.panelIntro}>Edit individual entries from this maintenance’s timeline.</p>
+    <div className={styles.updateList}>{item.updates.map((update) => <MaintenanceUpdateRow key={update.id} maintenance={item} update={update} onSuccess={onSuccess} />)}</div>
+  </div>;
+}
+
 function MaintenanceRow({ item, services, defaultAffectsUptime }: { item: MaintenanceItem; services: ServiceOption[]; defaultAffectsUptime: boolean }) {
   return <div className={`${styles.row} ${styles.eventRow}`}><div><strong>{item.titleEn}</strong><small>{item.status} · {item.isPublished ? "Published" : "Draft"} · <LocalTime value={item.scheduledStartAt} /> · {item.updates.length} updates</small></div><div className={styles.rowActions}>
     <DialogForm button="Edit" title={`Edit ${item.titleEn}`}>{(close) => <MaintenanceForm item={item} services={services} defaultAffectsUptime={defaultAffectsUptime} onSuccess={close} />}</DialogForm>
     <DialogForm button="Update status" title={`Update ${item.titleEn}`}>{(close) => <MaintenanceUpdateForm item={item} onSuccess={close} />}</DialogForm>
+    {item.updates.length > 0 && <DialogForm button="Manage updates" title={`Timeline updates for ${item.titleEn}`}>{(close) => <MaintenanceUpdateManager item={item} onSuccess={close} />}</DialogForm>}
     <ConfirmDelete deleteAction={archiveEvent} fields={[{ name: "id", value: item.id }, { name: "type", value: "maintenance" }]} subject={item.titleEn} message="This maintenance event will be removed from the admin and public dashboards." />
   </div></div>;
 }

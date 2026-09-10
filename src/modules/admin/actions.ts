@@ -609,6 +609,74 @@ export async function updateMaintenance(_previous: EventActionState, form: FormD
   } catch (error) { return eventFailure(error, form); }
 }
 
+const maintenanceUpdateEditSchema = maintenanceUpdateSchema.omit({
+  id: true,
+  actualStartAt: true,
+  actualEndAt: true,
+  publish: true,
+  notifySubscribers: true,
+}).extend({
+  maintenanceId: z.string().uuid(),
+  updateId: z.string().uuid(),
+});
+
+export async function editMaintenanceUpdate(_previous: EventActionState, form: FormData): Promise<EventActionState> {
+  const admin = await requireAdmin();
+  try {
+    const input = maintenanceUpdateEditSchema.parse(values(form));
+    const db = getDb();
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const [[maintenance], [current]] = await Promise.all([
+        tx.select({ id: maintenances.id, archivedAt: maintenances.archivedAt })
+          .from(maintenances).where(eq(maintenances.id, input.maintenanceId)).limit(1),
+        tx.select().from(maintenanceUpdates).where(and(
+          eq(maintenanceUpdates.id, input.updateId),
+          eq(maintenanceUpdates.maintenanceId, input.maintenanceId),
+        )).limit(1),
+      ]);
+      if (!maintenance || maintenance.archivedAt) throw new SafeActionError("That maintenance event is no longer available.");
+      if (!current) throw new SafeActionError("That timeline update no longer exists.");
+      const effectiveError = validateUpdateEffectiveAt(input.effectiveAt, now);
+      if (effectiveError) throw new SafeActionError(effectiveError);
+      const messageEn = sanitizeRichText(input.messageEn);
+      const messageIt = sanitizeRichText(input.messageIt);
+      await tx.update(maintenanceUpdates).set({
+        status: input.status,
+        effectiveAt: input.effectiveAt,
+        messageEn,
+        messageIt,
+        updatedAt: now,
+      }).where(and(
+        eq(maintenanceUpdates.id, input.updateId),
+        eq(maintenanceUpdates.maintenanceId, input.maintenanceId),
+      ));
+      await tx.update(maintenances).set({ updatedAt: now }).where(eq(maintenances.id, input.maintenanceId));
+      await tx.insert(auditLogs).values({
+        actorSubject: admin.subject,
+        action: "edit",
+        entityType: "maintenance_update",
+        entityId: input.updateId,
+        before: {
+          maintenanceId: current.maintenanceId,
+          status: current.status,
+          effectiveAt: current.effectiveAt.toISOString(),
+          messageEn: current.messageEn,
+          messageIt: current.messageIt,
+        },
+        after: {
+          maintenanceId: input.maintenanceId,
+          status: input.status,
+          effectiveAt: input.effectiveAt.toISOString(),
+          messageEn,
+          messageIt,
+        },
+      });
+    });
+    return eventSuccess("Timeline update saved.");
+  } catch (error) { return eventFailure(error, form); }
+}
+
 export async function editMaintenance(_previous: EventActionState, form: FormData): Promise<EventActionState> {
   const admin = await requireAdmin();
   try {
