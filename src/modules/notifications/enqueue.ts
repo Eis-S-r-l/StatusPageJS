@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import { getDb, type Database, type DatabaseTransaction } from "../../db/client";
 import { notificationJobs, services, subscriptionCategories, subscriptionServices, subscriptions, systemSettings } from "../../db/schema";
+import { publicTimezone } from "../i18n/timezone";
 import { eventNotificationEmail } from "./email-templates";
 import { eventNotificationTelegramHtml } from "./telegram-message";
 import { eventNotificationWebexText } from "./webex-message";
@@ -42,7 +43,7 @@ export async function enqueueEventNotifications(
   const serviceSelections = await db.select().from(subscriptionServices);
   const categorySelections = await db.select().from(subscriptionCategories);
   const affectedServices = await db.select({ id: services.id, categoryId: services.categoryId, nameEn: services.nameEn, nameIt: services.nameIt }).from(services).where(inArray(services.id, event.serviceIds));
-  const [appearance] = await db.select({ companyName: systemSettings.companyName, logoDarkFile: systemSettings.logoDarkFile, logoLightFile: systemSettings.logoLightFile, updatedAt: systemSettings.updatedAt }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
+  const [appearance] = await db.select({ publicTimezone: systemSettings.publicTimezone, companyName: systemSettings.companyName, logoDarkFile: systemSettings.logoDarkFile, logoLightFile: systemSettings.logoLightFile, updatedAt: systemSettings.updatedAt }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const logoKind = appearance?.logoDarkFile ? "logo-dark" : appearance?.logoLightFile ? "logo-light" : null;
   const logoPath = logoKind ? `/api/branding/${logoKind}?v=${appearance!.updatedAt.getTime().toString(36)}` : null;
@@ -67,7 +68,7 @@ export async function enqueueEventNotifications(
     const eventStatus = italian ? event.statusIt : event.statusEn;
     if (eventStatus) details.unshift({ label: "Status", value: eventStatus });
     const dateLocale = italian ? "it-IT" : "en-GB";
-    const timeZone = process.env.APP_TIMEZONE ?? "Europe/Rome";
+    const timeZone = publicTimezone(appearance?.publicTimezone);
     if (event.startsAt) details.push({ label: italian ? "Inizio" : "Start", value: event.startsAt.toLocaleString(dateLocale, { timeZone }) });
     if (event.endsAt) details.push({ label: italian ? "Fine" : "End", value: event.endsAt.toLocaleString(dateLocale, { timeZone }) });
     const eventPath = `/${locale}/${event.kind === "incident" ? "incidents" : "maintenance"}/${encodeURIComponent(event.slug ?? event.sourceId)}`;

@@ -2,9 +2,9 @@ import type { Locale } from "@/modules/i18n/config";
 import type { EventState } from "@/modules/status/types";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
 
-export function formatDateTime(value: string, locale: Locale) {
+export function formatDateTime(value: string, locale: Locale, timeZone: string) {
   return new Intl.DateTimeFormat(locale === "it" ? "it-IT" : "en-GB", {
-    dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Rome",
+    dateStyle: "medium", timeStyle: "short", timeZone,
   }).format(new Date(value));
 }
 

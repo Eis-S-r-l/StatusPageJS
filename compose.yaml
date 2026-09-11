@@ -37,6 +37,12 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://eis_status:${POSTGRES_PASSWORD:-change-this-password}@database:5432/eis_status
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health', { signal: AbortSignal.timeout(5000) }).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -55,6 +61,12 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://eis_status:${POSTGRES_PASSWORD:-change-this-password}@database:5432/eis_status
+    healthcheck:
+      test: ["CMD", "node", "--import", "tsx", "src/worker/healthcheck.ts"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     depends_on:
       migrate:
         condition: service_completed_successfully

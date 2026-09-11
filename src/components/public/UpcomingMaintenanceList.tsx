@@ -18,7 +18,7 @@ export function visibleUpcomingMaintenance(events: StatusEvent[], expanded: bool
   return expanded ? events : events.slice(0, INITIAL_MAINTENANCE_COUNT);
 }
 
-function UpcomingMaintenanceCard({ event, locale }: { event: StatusEvent; locale: Locale }) {
+function UpcomingMaintenanceCard({ event, locale, timeZone }: { event: StatusEvent; locale: Locale; timeZone: string }) {
   const t = getDictionary(locale);
   const excerpt = eventPreviewExcerpt(event.summary[locale]);
   const href = `/${locale}/maintenance/${event.slug}`;
@@ -26,7 +26,7 @@ function UpcomingMaintenanceCard({ event, locale }: { event: StatusEvent; locale
   return <article className={styles.eventCard}>
     <div className={styles.eventTopline}>
       <span className={`${styles.eventState} ${styles[event.state]}`}>{eventStateLabel(event.state, t)}</span>
-      <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time>
+      <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale, timeZone)}</time>
     </div>
     <h3>{event.title[locale]}</h3>
     {excerpt && <p className={styles.upcomingMaintenanceExcerpt}>{excerpt}</p>}
@@ -34,14 +34,14 @@ function UpcomingMaintenanceCard({ event, locale }: { event: StatusEvent; locale
   </article>;
 }
 
-export function UpcomingMaintenanceList({ events, locale }: { events: StatusEvent[]; locale: Locale }) {
+export function UpcomingMaintenanceList({ events, locale, timeZone }: { events: StatusEvent[]; locale: Locale; timeZone: string }) {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   const t = getDictionary(locale);
   const visibleEvents = visibleUpcomingMaintenance(events, expanded);
 
   return <>
-    <div className={styles.eventList} id={listId}>{visibleEvents.map((event) => <UpcomingMaintenanceCard key={event.slug} event={event} locale={locale} />)}</div>
+    <div className={styles.eventList} id={listId}>{visibleEvents.map((event) => <UpcomingMaintenanceCard key={event.slug} event={event} locale={locale} timeZone={timeZone} />)}</div>
     {events.length > INITIAL_MAINTENANCE_COUNT && <button className={styles.showMoreButton} type="button" aria-controls={listId} aria-expanded={expanded} onClick={() => setExpanded((current) => !current)}>{expanded ? t.showLessMaintenance : t.showMoreMaintenance}</button>}
   </>;
 }

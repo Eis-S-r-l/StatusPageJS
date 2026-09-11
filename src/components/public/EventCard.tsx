@@ -7,14 +7,14 @@ import { SafeRichText } from "@/components/content/SafeRichText";
 import { eventStateLabel, formatDateTime } from "./format";
 import styles from "./public.module.css";
 
-export function EventCard({ event, locale }: { event: StatusEvent; locale: Locale }) {
+export function EventCard({ event, locale, timeZone }: { event: StatusEvent; locale: Locale; timeZone: string }) {
   const t = getDictionary(locale);
   const href = `/${locale}/${event.kind === "incident" ? "incidents" : "maintenance"}/${event.slug}`;
   return (
     <article className={styles.eventCard}>
       <div className={styles.eventTopline}>
         <span className={`${styles.eventState} ${styles[event.state]}`}>{eventStateLabel(event.state, t)}</span>
-        <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time>
+        <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale, timeZone)}</time>
       </div>
       <h3><Link href={href}>{event.title[locale]}</Link></h3>
       <SafeRichText html={event.summary[locale]} className={styles.richText} />

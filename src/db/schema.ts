@@ -383,6 +383,12 @@ export const subscriptions = pgTable(
     channelDisplayName: text("channel_display_name"),
     language: subscriptionLanguageEnum("language").default("en").notNull(),
     confirmationTokenHash: text("confirmation_token_hash"),
+    confirmationRequestedAt: timestamp("confirmation_requested_at", { withTimezone: true }),
+    pendingEmailPreferences: jsonb("pending_email_preferences").$type<{
+      language: "en" | "it";
+      receiveIncidents: boolean;
+      receiveMaintenance: boolean;
+    }>(),
     unsubscribeTokenHash: text("unsubscribe_token_hash"),
     unsubscribeRequestedAt: timestamp("unsubscribe_requested_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -402,8 +408,14 @@ export const subscriptions = pgTable(
       table.unsubscribedAt,
     ),
     uniqueIndex("subscriptions_unsubscribe_token_unique").on(table.unsubscribeTokenHash),
+    uniqueIndex("subscriptions_confirmation_token_unique").on(table.confirmationTokenHash),
   ],
 );
+
+export const workerHeartbeats = pgTable("worker_heartbeats", {
+  id: integer("id").primaryKey().default(1),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+}, (table) => [check("worker_heartbeats_singleton", sql`${table.id} = 1`)]);
 
 export const subscriptionServices = pgTable(
   "subscription_services",

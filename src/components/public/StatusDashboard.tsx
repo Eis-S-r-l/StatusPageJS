@@ -17,7 +17,7 @@ import { MaintenanceCalendarSubscription } from "./MaintenanceCalendarSubscripti
 import { maintenanceFeedUrl } from "@/modules/calendar/maintenance-calendar";
 import styles from "./public.module.css";
 
-function EventPreview({ event, locale }: { event: StatusEvent; locale: Locale }) {
+function EventPreview({ event, locale, timeZone }: { event: StatusEvent; locale: Locale; timeZone: string }) {
   const t = getDictionary(locale);
   const href = `/${locale}/${event.kind === "incident" ? "incidents" : "maintenance"}/${event.slug}`;
   const excerpt = eventPreviewExcerpt(event.summary[locale]);
@@ -26,7 +26,7 @@ function EventPreview({ event, locale }: { event: StatusEvent; locale: Locale })
       <span className={styles.eventPreviewContent}>
         <span className={styles.eventPreviewMeta}>
           <span>{event.kind === "maintenance" ? t.scheduledFor : eventStateLabel(event.state, t)}</span>
-          <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time>
+          <time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale, timeZone)}</time>
         </span>
         <strong>{event.title[locale]}</strong>
         {excerpt ? <span className={styles.eventPreviewExcerpt}>{excerpt}</span> : null}
@@ -36,7 +36,7 @@ function EventPreview({ event, locale }: { event: StatusEvent; locale: Locale })
   );
 }
 
-export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds }: { snapshot: PublicStatusSnapshot; locale: Locale; title: string; collapsedCategoryIds: string[] }) {
+export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds, timeZone }: { snapshot: PublicStatusSnapshot; locale: Locale; timeZone: string; title: string; collapsedCategoryIds: string[] }) {
   const t = getDictionary(locale);
   const overall = snapshot.overallState;
   const categoryContent: ServiceCategoryContent[] = sortLocalizedByOrder(snapshot.categories, locale).map((category) => ({
@@ -64,17 +64,17 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
         <div className={`${styles.statusBanner} ${styles[overall]}`}>
           <div className={styles.statusHeadline} role="status">
             <span className={styles.statusIcon} aria-hidden="true">{overall === "operational" ? <Check /> : <AlertTriangle />}</span>
-            <span className={styles.statusCopy}><strong>{t.overall[overall]}</strong><span>{t.lastUpdated} <time dateTime={snapshot.lastUpdatedAt}>{formatDateTime(snapshot.lastUpdatedAt, locale)}</time></span></span>
+            <span className={styles.statusCopy}><strong>{t.overall[overall]}</strong><span>{t.lastUpdated} <time dateTime={snapshot.lastUpdatedAt}>{formatDateTime(snapshot.lastUpdatedAt, locale, timeZone)}</time></span></span>
             <span className={styles.current}><Radio size={14} aria-hidden="true" /> {t.live}</span>
           </div>
-          {snapshot.activeIncidents.length ? <div className={styles.eventPreviewList} role="group" aria-label={t.activeTitle}>{snapshot.activeIncidents.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div> : null}
+          {snapshot.activeIncidents.length ? <div className={styles.eventPreviewList} role="group" aria-label={t.activeTitle}>{snapshot.activeIncidents.map((event) => <EventPreview key={event.slug} event={event} locale={locale} timeZone={timeZone} />)}</div> : null}
         </div>
         {snapshot.maintenancePreview.length ? <section className={styles.maintenanceBanner} aria-labelledby="maintenance-preview-title">
           <div className={styles.maintenanceHeadline}>
             <span className={styles.maintenanceIcon} aria-hidden="true"><CalendarClock /></span>
             <span><strong id="maintenance-preview-title">{t.maintenanceTitle}</strong><span>{t.maintenancePreviewWindow.replace("{days}", String(snapshot.maintenancePreviewDays))}</span></span>
           </div>
-          <div className={styles.eventPreviewList}>{snapshot.maintenancePreview.map((event) => <EventPreview key={event.slug} event={event} locale={locale} />)}</div>
+          <div className={styles.eventPreviewList}>{snapshot.maintenancePreview.map((event) => <EventPreview key={event.slug} event={event} locale={locale} timeZone={timeZone} />)}</div>
         </section> : null}
       </section>
 
@@ -88,17 +88,17 @@ export function StatusDashboard({ snapshot, locale, title, collapsedCategoryIds 
 
       <section className={styles.section} aria-labelledby="active-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.activeEyebrow}</p><h2 id="active-title">{t.activeTitle}</h2></div></div>
-        {snapshot.activeIncidents.length ? <div className={styles.eventList}>{snapshot.activeIncidents.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div> : <div className={styles.empty}><Check aria-hidden="true" /><div><strong>{t.noActive}</strong><p>{t.noActiveBody}</p></div></div>}
+        {snapshot.activeIncidents.length ? <div className={styles.eventList}>{snapshot.activeIncidents.map((event) => <EventCard key={event.slug} event={event} locale={locale} timeZone={timeZone} />)}</div> : <div className={styles.empty}><Check aria-hidden="true" /><div><strong>{t.noActive}</strong><p>{t.noActiveBody}</p></div></div>}
       </section>
 
       <section className={styles.section} aria-labelledby="maintenance-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.maintenanceEyebrow}</p><h2 id="maintenance-title">{t.maintenanceTitle}</h2></div><MaintenanceCalendarSubscription feedUrl={maintenanceFeedUrl(locale)} locale={locale} /></div>
-        {snapshot.upcomingMaintenance.length ? <UpcomingMaintenanceList events={snapshot.upcomingMaintenance} locale={locale} /> : <div className={styles.empty}>{t.noMaintenance}</div>}
+        {snapshot.upcomingMaintenance.length ? <UpcomingMaintenanceList events={snapshot.upcomingMaintenance} locale={locale} timeZone={timeZone} /> : <div className={styles.empty}>{t.noMaintenance}</div>}
       </section>
 
       <section className={styles.section} aria-labelledby="recent-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{t.recentEyebrow}</p><h2 id="recent-title">{t.recentTitle}</h2></div><div className={styles.historyLinks}><Link href={`/${locale}/incidents`}>{t.viewAllIncidents}</Link><Link href={`/${locale}/maintenance`}>{t.viewAllMaintenance}</Link></div></div>
-        <div className={styles.eventList}>{snapshot.recentEvents.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div>
+        <div className={styles.eventList}>{snapshot.recentEvents.map((event) => <EventCard key={event.slug} event={event} locale={locale} timeZone={timeZone} />)}</div>
       </section>
 
       <section className={styles.subscribePanel} id="subscribe" aria-labelledby="subscribe-title">

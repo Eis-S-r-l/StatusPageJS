@@ -27,5 +27,5 @@ export default async function StatusPage({ params }: { params: Promise<{ locale:
   const [snapshot, appearance, cookieStore] = await Promise.all([publicStatusRepository.getSnapshot(), loadPublicAppearance(), cookies()]);
   const title = appearance.statusPageTitle.trim() || getDictionary(locale).metadata.title;
   const collapsedCategoryIds = parseCollapsedCategoryIds(cookieStore.get(COLLAPSED_CATEGORIES_COOKIE)?.value, snapshot.categories.map((category) => category.id));
-  return <PublicShell locale={locale} alternatePath={`/${otherLocale(locale)}`}><StatusDashboard snapshot={snapshot} locale={locale} title={title} collapsedCategoryIds={collapsedCategoryIds} /></PublicShell>;
+  return <PublicShell locale={locale} alternatePath={`/${otherLocale(locale)}`}><StatusDashboard timeZone={appearance.publicTimezone} snapshot={snapshot} locale={locale} title={title} collapsedCategoryIds={collapsedCategoryIds} /></PublicShell>;
 }

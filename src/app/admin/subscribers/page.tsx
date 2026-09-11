@@ -1,3 +1,4 @@
+import { loadPublicAppearance } from "@/modules/appearance/server";
 import Link from "next/link";
 
 import { deleteSubscriber, queueWebexTestNotification, refreshTelegramSubscriber, updateSubscriber } from "@/modules/admin/actions";
@@ -18,9 +19,9 @@ function pageHref(query: Query, page: number): string {
   return `/admin/subscribers?${params}`;
 }
 
-function deliveryLabel(delivery: { status: string; attemptCount: number; sentAt: Date | null; updatedAt: Date }): string {
+function deliveryLabel(delivery: { status: string; attemptCount: number; sentAt: Date | null; updatedAt: Date }, timeZone: string): string {
   const time = (delivery.sentAt ?? delivery.updatedAt).toLocaleString("en-GB", {
-    timeZone: process.env.APP_TIMEZONE ?? "Europe/Rome", dateStyle: "short", timeStyle: "short",
+    timeZone, dateStyle: "short", timeStyle: "short",
   });
   if (delivery.status === "sent") return `Last notification sent ${time}`;
   if (delivery.status === "processing") return `Notification processing · attempt ${delivery.attemptCount}`;
@@ -33,6 +34,7 @@ function deliveryLabel(delivery: { status: string; attemptCount: number; sentAt:
 export default async function SubscribersPage({ searchParams }: { searchParams: Promise<Query> }) {
   await requireAdmin();
   const query = await searchParams;
+  const appearance = await loadPublicAppearance();
   const channel = ["email", "telegram", "webex"].includes(query.channel ?? "") ? query.channel as "email" | "telegram" | "webex" : "all";
   const status = ["confirmed", "pending"].includes(query.status ?? "") ? query.status as "confirmed" | "pending" : "all";
   const result = await loadSubscribers({ query: query.q, channel, status, page: Number(query.page) || 1 });
@@ -64,7 +66,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
               <strong>{identity ?? item.destination}</strong>
               {destinationDetails && <small>{destinationDetails}</small>}
               <small>{item.channel} · {item.unsubscribedAt ? "Unsubscribed (legacy)" : item.confirmedAt ? "Confirmed" : "Awaiting confirmation"}</small>
-              {item.latestDelivery && <small>{deliveryLabel(item.latestDelivery)}</small>}
+              {item.latestDelivery && <small>{deliveryLabel(item.latestDelivery, appearance.publicTimezone)}</small>}
               {item.latestDelivery?.lastError && <small className={styles.deliveryError}>{item.latestDelivery.lastError}</small>}
             </div>
             <details className={styles.eventActions}><summary>Edit</summary>

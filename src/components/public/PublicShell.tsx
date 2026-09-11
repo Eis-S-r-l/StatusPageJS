@@ -7,6 +7,7 @@ import { otherLocale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { brandingAssetUrl, loadPublicAppearance } from "@/modules/appearance/server";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { PublicAutoRefresh } from "./PublicAutoRefresh";
 import { LanguagePreferenceLink } from "./LanguagePreferenceLink";
 import styles from "./public.module.css";
 
@@ -42,10 +43,11 @@ export async function PublicShell({ locale, alternatePath, children }: PublicShe
           </div>
         </div>
       </header>
+      <PublicAutoRefresh locale={locale} renderedAt={new Date().toISOString()} />
       {children}
       <footer className={styles.footer}>
         <span>© {new Date().getFullYear()} {appearance.companyName}</span>
-        <span>{t.footerNote}</span>
+        <span>{t.footerNote} · {appearance.publicTimezone}</span>
       </footer>
     </div>
   );

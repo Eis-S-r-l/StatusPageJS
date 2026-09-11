@@ -20,6 +20,7 @@ describe("theme persistence", () => {
 
   it("generates independent service-status text CSS variables for both themes", () => {
     const style = appearanceStyle({
+      publicTimezone: "Europe/Rome",
       companyName: "EIS",
       statusPageTitle: "EIS Service Status",
       customHeaderScripts: "",

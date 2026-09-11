@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gt, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, lte, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { notificationJobs, subscriptions } from "@/db/schema";
@@ -12,18 +12,8 @@ import { createSubscriptionToken, hashSubscriptionToken } from "./tokens";
 export async function requestEmailSubscription(input: { email: string; language: "en" | "it"; receiveIncidents: boolean; receiveMaintenance: boolean }) {
   const email = input.email.trim().toLowerCase();
   const { token, hash } = createSubscriptionToken();
-  const db = getDb();
-  const [recent] = await db.select({ updatedAt: subscriptions.updatedAt }).from(subscriptions).where(and(eq(subscriptions.channel, "email"), eq(subscriptions.destination, email))).limit(1);
-  if (recent && recent.updatedAt.getTime() > Date.now() - 60_000) return;
-  const [subscription] = await db.insert(subscriptions).values({
-    channel: "email", destination: email, language: input.language,
-    receiveIncidents: input.receiveIncidents, receiveMaintenance: input.receiveMaintenance,
-    confirmationTokenHash: hash, unsubscribeTokenHash: null, unsubscribeRequestedAt: null, confirmedAt: null, unsubscribedAt: null,
-  }).onConflictDoUpdate({
-    target: [subscriptions.channel, subscriptions.destination],
-    set: { language: input.language, receiveIncidents: input.receiveIncidents, receiveMaintenance: input.receiveMaintenance, confirmationTokenHash: hash, unsubscribeTokenHash: null, unsubscribeRequestedAt: null, confirmedAt: null, unsubscribedAt: null, updatedAt: new Date() },
-  }).returning({ id: subscriptions.id });
-
+  const now = new Date();
+  const preferences = { language: input.language, receiveIncidents: input.receiveIncidents, receiveMaintenance: input.receiveMaintenance };
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const confirmationUrl = new URL("/api/subscribe/confirm", appUrl);
   confirmationUrl.searchParams.set("token", token);
@@ -36,26 +26,53 @@ export async function requestEmailSubscription(input: { email: string; language:
     companyName: appearance.companyName,
     logoUrl: logoPath ? new URL(logoPath, appUrl).toString() : null,
   });
-  await db.insert(notificationJobs).values({
-    subscriptionId: subscription.id,
-    type: "subscription_confirmation",
-    idempotencyKey: `subscription-confirmation:${subscription.id}:${hash.slice(0, 16)}`,
-    payload: template,
-  }).onConflictDoNothing();
+  await getDb().transaction(async (tx) => {
+    const [subscription] = await tx.insert(subscriptions).values({
+      channel: "email", destination: email, ...preferences,
+      confirmationTokenHash: hash, confirmationRequestedAt: now, pendingEmailPreferences: preferences,
+    }).onConflictDoUpdate({
+      target: [subscriptions.channel, subscriptions.destination],
+      // A public request must never suspend an active subscription or change
+      // its preferences before the inbox owner confirms the new request.
+      set: { confirmationTokenHash: hash, confirmationRequestedAt: now, pendingEmailPreferences: preferences, updatedAt: now },
+      setWhere: or(isNull(subscriptions.confirmationRequestedAt), lte(subscriptions.confirmationRequestedAt, new Date(now.getTime() - 60_000))),
+    }).returning({ id: subscriptions.id });
+    if (!subscription) return;
+    await tx.insert(notificationJobs).values({
+      subscriptionId: subscription.id,
+      type: "subscription_confirmation",
+      idempotencyKey: `subscription-confirmation:${subscription.id}:${hash.slice(0, 16)}`,
+      payload: template,
+    }).onConflictDoNothing();
+  });
 }
 
 export async function confirmEmailSubscription(token: string): Promise<"en" | "it" | null> {
-  const validSince = new Date(Date.now() - 7 * 24 * 60 * 60_000);
-  const [updated] = await getDb().update(subscriptions).set({ confirmedAt: new Date(), confirmationTokenHash: null, updatedAt: new Date() })
-    .where(and(eq(subscriptions.confirmationTokenHash, hashSubscriptionToken(token)), gt(subscriptions.updatedAt, validSince))).returning({ language: subscriptions.language });
-  return updated?.language ?? null;
+  const now = new Date();
+  const validSince = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
+  return getDb().transaction(async (tx) => {
+    const [subscription] = await tx.select().from(subscriptions)
+      .where(and(eq(subscriptions.channel, "email"), eq(subscriptions.confirmationTokenHash, hashSubscriptionToken(token)), gt(subscriptions.confirmationRequestedAt, validSince)))
+      .limit(1).for("update");
+    if (!subscription) return null;
+    const preferences = subscription.pendingEmailPreferences ?? {
+      language: subscription.language,
+      receiveIncidents: subscription.receiveIncidents,
+      receiveMaintenance: subscription.receiveMaintenance,
+    };
+    await tx.update(subscriptions).set({
+      ...preferences, confirmedAt: subscription.confirmedAt ?? now, unsubscribedAt: null,
+      confirmationTokenHash: null, pendingEmailPreferences: null, updatedAt: now,
+    }).where(eq(subscriptions.id, subscription.id));
+    return preferences.language;
+  });
 }
 
 export async function pendingEmailSubscriptionLocale(token: string): Promise<"en" | "it" | null> {
   const validSince = new Date(Date.now() - 7 * 24 * 60 * 60_000);
-  const [subscription] = await getDb().select({ language: subscriptions.language }).from(subscriptions)
-    .where(and(eq(subscriptions.confirmationTokenHash, hashSubscriptionToken(token)), gt(subscriptions.updatedAt, validSince))).limit(1);
-  return subscription?.language ?? null;
+  const [subscription] = await getDb().select({ language: subscriptions.language, pendingEmailPreferences: subscriptions.pendingEmailPreferences }).from(subscriptions)
+    .where(and(eq(subscriptions.channel, "email"), eq(subscriptions.confirmationTokenHash, hashSubscriptionToken(token)), gt(subscriptions.confirmationRequestedAt, validSince))).limit(1);
+  return subscription?.pendingEmailPreferences?.language ?? subscription?.language ?? null;
 }
 
 export async function requestEmailUnsubscription(input: { email: string; language: "en" | "it" }): Promise<void> {

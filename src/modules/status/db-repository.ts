@@ -12,6 +12,7 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { DEFAULT_PUBLIC_TIMEZONE, publicTimezone as validTimezone } from "../i18n/timezone";
 import { getDb, type Database } from "../../db/client";
 import {
   categories,
@@ -226,17 +227,6 @@ function eventOverlapsDay(
   dayEnd: number,
 ): boolean {
   return start.getTime() < dayEnd && (end?.getTime() ?? dayEnd) > dayStart;
-}
-
-const FALLBACK_PUBLIC_TIMEZONE = "Europe/Rome";
-
-function validTimezone(value: string): string {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value }).format();
-    return value;
-  } catch {
-    return FALLBACK_PUBLIC_TIMEZONE;
-  }
 }
 
 function calendarDate(value: Date, timeZone: string): string {
@@ -490,7 +480,7 @@ export class DatabasePublicStatusRepository implements PublicStatusRepository {
     }).from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
     const uptimeIntervalDays = settings?.uptimeIntervalDays ?? 30;
     const maintenancePreviewDays = settings?.maintenancePreviewDays ?? 7;
-    const publicTimezone = settings?.publicTimezone ?? FALLBACK_PUBLIC_TIMEZONE;
+    const publicTimezone = settings?.publicTimezone ?? DEFAULT_PUBLIC_TIMEZONE;
     const historySince = new Date(now.getTime() - (uptimeIntervalDays + 1) * DAY_MS);
 
     const [categoryRows, serviceRows, incidentRows, maintenanceRows] =

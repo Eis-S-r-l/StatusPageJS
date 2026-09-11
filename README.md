@@ -2,7 +2,7 @@
 
 A bilingual, manually managed status-page system built as a Next.js modular monolith. The same application serves the public English/Italian status pages, the Cognito-protected administration area, APIs, bot webhooks, and a PostgreSQL-backed notification worker. Administrators can configure separate light and dark palettes and upload mode-specific logos and a favicon.
 
-Incident and maintenance dates are entered in the administrator's browser timezone and stored as UTC. The administration area provides full event editing, automatic-but-editable slugs, compact per-service downtime selection, separate timeline/status updates, and sanitized rich-text descriptions with headings, text sizes, lists, links, and tables. Subscriber administration supports searching, notification preferences, permanent deletion, and Telegram profile names. Email subscribers can request a confirmed unsubscription from the public status page, and all notification emails include a link to that flow.
+Incident and maintenance dates are entered in the administrator's browser timezone and stored as UTC. **Admin → Settings → Public timezone** controls public timestamps, history-day boundaries, and dates in newly queued notifications; the footer displays that timezone. The old `APP_TIMEZONE` environment variable is no longer used. The administration area provides full event editing, automatic-but-editable slugs, compact per-service downtime selection, separate timeline/status updates, and sanitized rich-text descriptions with headings, text sizes, lists, links, and tables. Subscriber administration supports searching, notification preferences, permanent deletion, and Telegram profile names. Email subscribers can request a confirmed unsubscription from the public status page, and all notification emails include a link to that flow.
 
 The product decisions and delivery plan are recorded in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
@@ -31,7 +31,11 @@ npm run worker
 
 The public application is available at `http://localhost:3000/en` and `http://localhost:3000/it`. The administration area is at `http://localhost:3000/admin`.
 
+The Inter and Manrope fonts are bundled as local WOFF2 files, with their licenses in `src/app/assets/fonts`. Production builds do not download fonts.
+
 Branding uploads are stored under `data/branding` in local development. The directory is created automatically and is excluded from Git.
+
+Public pages refresh every 30 seconds while visible and immediately when the visitor returns to the tab or reconnects. Refreshes preserve browser state, including form input and collapsed categories. A connection warning remains visible until a fresh server response arrives; failed page renders show a localized retry screen.
 
 The public dashboard stores collapsed service-category preferences in the browser cookie `eis-collapsed-categories`. It contains only current category IDs, is limited in size, and expires after one year; deleting it restores all categories to their expanded state.
 
@@ -387,6 +391,20 @@ The worker logs and admin page include the Webex response reason and tracking ID
 The public English and Italian pages provide both subscription and unsubscription forms. Unsubscription is confirmed through a one-time email link; the confirmed action permanently deletes the subscription. Confirmation links return a localized human-readable result page rather than JSON.
 
 Incident and maintenance notifications use the configured company name and dark-header logo, contain localized event details, and include the localized unsubscription-page link. The worker always sends a plain-text alternative alongside the HTML message.
+
+## Delivery reliability and operations
+
+Email subscription requests store pending preferences and queue the confirmation email in one transaction. An existing subscriber keeps receiving alerts with their current language and preferences until the inbox owner confirms the new request. Repeated requests are limited atomically to one per minute per address. Confirmation links expire seven days after the request, independently of later admin edits. Migration `0009_reliability_and_subscription_preferences.sql` preserves pending links from the previous schema.
+
+The worker checks for interrupted deliveries on every notification cycle. Claims older than 15 minutes return to the queue; interrupted deliveries that have exhausted eight attempts are marked failed. Uptime calculation and heartbeat loops run independently of notification delivery, so a slow provider does not hold them up. External delivery remains at least once: an interruption after the provider accepts a message but before the database records success can produce a duplicate.
+
+**Admin → Operations overview** shows the last worker heartbeat, the oldest pending delivery, failed/interrupted delivery counts, and services with missing, failed, or stale uptime calculations. Active downtime becomes stale after three configured refresh intervals (at least two minutes). Other calculations become stale after 24 hours plus five minutes; calculations using an old uptime period are flagged immediately.
+
+**Admin → Notifications** provides a paginated queue filtered by status and channel, including recipient, subject, attempts, retry time, and failure details. **Retry delivery** queues a failed message with a fresh eight-attempt budget and writes an audit entry. It never requeues a sent or already pending message, an inactive event subscriber, or an expired/replaced/used confirmation link. No message is sent directly by the admin action.
+
+The worker records a database heartbeat every 30 seconds. `GET /api/health` is an uncached endpoint for external monitoring: it returns HTTP 200 with `{"status":"ok"}` when the database is reachable and the heartbeat is at most two minutes old. A missing/stale heartbeat returns HTTP 503 with `{"status":"degraded"}`; a database error returns HTTP 503 with `{"status":"unavailable"}`. It exposes no subscription data or error details. Compose checks both the web endpoint and the worker heartbeat. Configure an external uptime monitor against this endpoint if alerts outside the admin area are required; Docker marks unhealthy containers but does not restart them solely because a health check fails.
+
+Apply migrations before starting the new web and worker versions (`npm run db:migrate`, or the existing Compose migration service). The new operations queries and subscription fields require migration 0009.
 
 ## Calendar integration
 

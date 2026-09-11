@@ -1,3 +1,4 @@
+import { loadPublicAppearance } from "@/modules/appearance/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicEventIndex } from "@/components/public/PublicEventIndex";
@@ -21,6 +22,7 @@ export default async function IncidentsPage({ params, searchParams }: { params: 
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   if (!isLocale(locale)) notFound();
   const result = await publicStatusRepository.listIncidents(parsePage(query.page), PAGE_SIZE);
+  const appearance = await loadPublicAppearance();
   const queryString = `?page=${result.page}`;
-  return <PublicShell locale={locale} alternatePath={`/${otherLocale(locale)}/incidents${queryString}`}><PublicEventIndex locale={locale} kind="incident" result={result} /></PublicShell>;
+  return <PublicShell locale={locale} alternatePath={`/${otherLocale(locale)}/incidents${queryString}`}><PublicEventIndex timeZone={appearance.publicTimezone} locale={locale} kind="incident" result={result} /></PublicShell>;
 }

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { connection } from "next/server";
-import { CalendarClock, Gauge, Globe2, LogOut, Palette, Settings, Siren, Users, Wrench } from "lucide-react";
+import { Bell, CalendarClock, Gauge, Globe2, LogOut, Palette, Settings, Siren, Users, Wrench } from "lucide-react";
 
 import { fontClassName } from "@/app/fonts";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const links = [
   ["Admin dashboard", "/admin", Gauge], ["Public dashboard", "/", Globe2], ["Services", "/admin/services", Wrench],
   ["Incidents", "/admin/incidents", Siren], ["Maintenance", "/admin/maintenance", CalendarClock],
-  ["Subscribers", "/admin/subscribers", Users], ["Appearance", "/admin/appearance", Palette], ["Settings", "/admin/settings", Settings],
+  ["Subscribers", "/admin/subscribers", Users], ["Notifications", "/admin/notifications", Bell], ["Appearance", "/admin/appearance", Palette], ["Settings", "/admin/settings", Settings],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

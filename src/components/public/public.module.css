@@ -212,3 +212,8 @@
   .timelineMeta { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .subscribe, .adminAccess, .language, .themeToggle, .back, .eventFooter a, .eventPreview, .categoryChevron, .categoryChevronCollapsed, .calendarActionMenu > summary, .calendarSubscription > summary, .calendarMenuChevron { transition: none; } }
+
+.refreshStatus { width: min(1120px, calc(100% - 40px)); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin: 12px auto 0; color: var(--color-muted); font-size: .78rem; }
+.refreshUnavailable { justify-content: space-between; padding: 12px 14px; border: 1px solid var(--color-warning); border-radius: 10px; color: var(--color-text); background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface)); }
+.refreshStatus button { border: 1px solid currentColor; border-radius: 6px; padding: 6px 10px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.refreshStatus button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }

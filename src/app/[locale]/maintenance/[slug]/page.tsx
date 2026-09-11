@@ -1,3 +1,4 @@
+import { loadPublicAppearance } from "@/modules/appearance/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/public/EventDetail";
@@ -29,6 +30,7 @@ export default async function MaintenancePage({ params }: { params: Promise<{ lo
   if (!isLocale(locale)) notFound();
   const event = await publicStatusRepository.getMaintenance(slug);
   if (!event) notFound();
+  const appearance = await loadPublicAppearance();
   const alternatePath = `/${otherLocale(locale)}/maintenance/${slug}`;
-  return <PublicShell locale={locale} alternatePath={alternatePath}><EventDetail event={event} locale={locale} /></PublicShell>;
+  return <PublicShell locale={locale} alternatePath={alternatePath}><EventDetail timeZone={appearance.publicTimezone} event={event} locale={locale} /></PublicShell>;
 }

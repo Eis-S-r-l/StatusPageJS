@@ -9,7 +9,7 @@ import { MaintenanceCalendarActions } from "./MaintenanceCalendarActions";
 import { eventStateLabel, formatDateTime } from "./format";
 import styles from "./public.module.css";
 
-export function EventDetail({ event, locale }: { event: StatusEvent; locale: Locale }) {
+export function EventDetail({ event, locale, timeZone }: { event: StatusEvent; locale: Locale; timeZone: string }) {
   const t = getDictionary(locale);
   const renderedAt = new Date().toISOString();
   const canAddToCalendar = event.kind === "maintenance" && event.state === "scheduled" && event.endsAt !== null && Date.parse(event.startsAt) > Date.parse(renderedAt);
@@ -24,15 +24,15 @@ export function EventDetail({ event, locale }: { event: StatusEvent; locale: Loc
           {canAddToCalendar ? <MaintenanceCalendarActions event={event} locale={locale} /> : null}
         </header>
         <dl className={styles.facts}>
-          <div><dt><Calendar size={16} aria-hidden="true" />{t.started}</dt><dd><time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale)}</time></dd></div>
-          {event.endsAt && <div><dt><Calendar size={16} aria-hidden="true" />{t.ended}</dt><dd><time dateTime={event.endsAt}>{formatDateTime(event.endsAt, locale)}</time></dd></div>}
+          <div><dt><Calendar size={16} aria-hidden="true" />{t.started}</dt><dd><time dateTime={event.startsAt}>{formatDateTime(event.startsAt, locale, timeZone)}</time></dd></div>
+          {event.endsAt && <div><dt><Calendar size={16} aria-hidden="true" />{t.ended}</dt><dd><time dateTime={event.endsAt}>{formatDateTime(event.endsAt, locale, timeZone)}</time></dd></div>}
           <div><dt><Clock size={16} aria-hidden="true" />{t.duration}</dt><dd><EventDuration start={event.startsAt} end={event.endsAt} locale={locale} initialNow={renderedAt} /></dd></div>
           <div><dt>{t.affectedServices}</dt><dd>{event.affectedServices.map((service) => service.name[locale]).join(", ")}</dd></div>
         </dl>
         <section className={styles.timelineSection} aria-labelledby="timeline-title">
           <h2 id="timeline-title">{t.timeline}</h2>
           <ol className={styles.timeline}>
-            {event.timeline.map((entry) => <li key={entry.id}><span className={styles.timelineDot} aria-hidden="true" /><div><div className={styles.timelineMeta}><strong>{eventStateLabel(entry.state, t)}</strong><time dateTime={entry.effectiveAt}>{formatDateTime(entry.effectiveAt, locale)}</time></div><SafeRichText html={entry.message[locale]} className={styles.richText} /></div></li>)}
+            {event.timeline.map((entry) => <li key={entry.id}><span className={styles.timelineDot} aria-hidden="true" /><div><div className={styles.timelineMeta}><strong>{eventStateLabel(entry.state, t)}</strong><time dateTime={entry.effectiveAt}>{formatDateTime(entry.effectiveAt, locale, timeZone)}</time></div><SafeRichText html={entry.message[locale]} className={styles.richText} /></div></li>)}
           </ol>
         </section>
       </article>

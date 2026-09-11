@@ -1,5 +1,8 @@
 import "server-only";
 
+import { cache } from "react";
+import { publicTimezone, DEFAULT_PUBLIC_TIMEZONE } from "@/modules/i18n/timezone";
+
 import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -10,6 +13,7 @@ import { DEFAULT_DARK_PALETTE, DEFAULT_LIGHT_PALETTE, normalizePalette, type The
 export type BrandingAssetKind = "logo-light" | "logo-dark" | "favicon";
 
 export interface PublicAppearance {
+  publicTimezone: string;
   companyName: string;
   statusPageTitle: string;
   customHeaderScripts: string;
@@ -25,6 +29,7 @@ export interface PublicAppearance {
 }
 
 export const DEFAULT_APPEARANCE: PublicAppearance = {
+  publicTimezone: DEFAULT_PUBLIC_TIMEZONE,
   companyName: "EIS",
   statusPageTitle: "EIS Service Status",
   customHeaderScripts: "",
@@ -39,10 +44,11 @@ export const DEFAULT_APPEARANCE: PublicAppearance = {
   version: "default",
 };
 
-export async function loadPublicAppearance(): Promise<PublicAppearance> {
+export const loadPublicAppearance = cache(async (): Promise<PublicAppearance> => {
   if (!process.env.DATABASE_URL) return DEFAULT_APPEARANCE;
   try {
     const [row] = await getDb().select({
+      publicTimezone: systemSettings.publicTimezone,
       companyName: systemSettings.companyName,
       statusPageTitle: systemSettings.statusPageTitle,
       customHeaderScripts: systemSettings.customHeaderScripts,
@@ -59,6 +65,7 @@ export async function loadPublicAppearance(): Promise<PublicAppearance> {
     if (!row) return DEFAULT_APPEARANCE;
     return {
       ...row,
+      publicTimezone: publicTimezone(row.publicTimezone),
       lightPalette: normalizePalette(row.lightPalette, DEFAULT_LIGHT_PALETTE),
       darkPalette: normalizePalette(row.darkPalette, DEFAULT_DARK_PALETTE),
       version: row.updatedAt.getTime().toString(36),
@@ -66,7 +73,7 @@ export async function loadPublicAppearance(): Promise<PublicAppearance> {
   } catch {
     return DEFAULT_APPEARANCE;
   }
-}
+});
 
 export function brandingAssetUrl(kind: BrandingAssetKind, appearance: PublicAppearance): string | null {
   const exists = kind === "logo-light" ? appearance.logoLightFile : kind === "logo-dark" ? appearance.logoDarkFile : appearance.faviconFile;

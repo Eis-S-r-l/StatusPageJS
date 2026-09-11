@@ -55,7 +55,7 @@ export async function deliver(target: DeliveryTarget): Promise<void> {
     await new SESv2Client({ region }).send(new SendEmailCommand({
       FromEmailAddress: from, Destination: { ToAddresses: [target.destination] },
       Content: { Simple: { Subject: { Data: content.subject, Charset: "UTF-8" }, Body: { Text: { Data: content.text, Charset: "UTF-8" }, ...(content.html ? { Html: { Data: content.html, Charset: "UTF-8" } } : {}) } } },
-    }));
+    }), { abortSignal: AbortSignal.timeout(10_000) });
     return;
   }
   if (target.channel === "telegram") {

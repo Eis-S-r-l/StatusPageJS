@@ -14,7 +14,7 @@ function pageHref(path: string, page: number): string {
   return page === 1 ? path : `${path}?page=${page}`;
 }
 
-export function PublicEventIndex({ locale, kind, result }: { locale: Locale; kind: EventKind; result: PaginatedStatusEvents }) {
+export function PublicEventIndex({ locale, kind, result, timeZone }: { locale: Locale; timeZone: string; kind: EventKind; result: PaginatedStatusEvents }) {
   const t = getDictionary(locale);
   const isIncident = kind === "incident";
   const path = `/${locale}/${isIncident ? "incidents" : "maintenance"}`;
@@ -35,7 +35,7 @@ export function PublicEventIndex({ locale, kind, result }: { locale: Locale; kin
         </div>
       </section>
       <section className={styles.section} aria-label={title}>
-        {result.events.length ? <div className={styles.eventList}>{result.events.map((event) => <EventCard key={event.slug} event={event} locale={locale} />)}</div> : <div className={styles.empty}>{empty}</div>}
+        {result.events.length ? <div className={styles.eventList}>{result.events.map((event) => <EventCard key={event.slug} event={event} locale={locale} timeZone={timeZone} />)}</div> : <div className={styles.empty}>{empty}</div>}
         <nav className={styles.pagination} aria-label={t.paginationLabel}>
           {result.page > 1 ? <Link href={pageHref(path, result.page - 1)}><ArrowLeft size={16} aria-hidden="true" />{t.previousPage}</Link> : <span />}
           <span>{t.pageCount.replace("{page}", String(result.page)).replace("{pages}", String(result.totalPages))}</span>

@@ -16,6 +16,7 @@ import {
   subscriptions,
   systemSettings,
 } from "@/db/schema";
+import { loadOperationsStatus } from "@/modules/operations/status";
 import { DEFAULT_APPEARANCE } from "@/modules/appearance/server";
 import { DEFAULT_DARK_PALETTE, DEFAULT_LIGHT_PALETTE, normalizePalette } from "@/modules/appearance/palette";
 import { sortServicesForManagement } from "@/modules/admin/service-validation";
@@ -103,6 +104,7 @@ export const loadAppearanceSettings = () => safely(async () => {
   const [row] = await getDb().select().from(systemSettings).where(eq(systemSettings.id, 1)).limit(1);
   if (!row) return DEFAULT_APPEARANCE;
   return {
+    publicTimezone: row.publicTimezone,
     companyName: row.companyName,
     statusPageTitle: row.statusPageTitle,
     customHeaderScripts: row.customHeaderScripts,
@@ -120,14 +122,14 @@ export const loadAppearanceSettings = () => safely(async () => {
 
 export const loadDashboard = () => safely(async () => {
   const db = getDb();
-  const [serviceRows, incidentRows, maintenanceRows, subscriberRows, failedJobs] = await Promise.all([
+  const [serviceRows, incidentRows, maintenanceRows, subscriberRows, operations] = await Promise.all([
     db.select({ id: services.id }).from(services).where(isNull(services.archivedAt)),
     db.select({ id: incidents.id }).from(incidents).where(isNull(incidents.archivedAt)),
     db.select({ id: maintenances.id }).from(maintenances).where(isNull(maintenances.archivedAt)),
     db.select({ id: subscriptions.id }).from(subscriptions).where(isNull(subscriptions.unsubscribedAt)),
-    db.select({ id: notificationJobs.id }).from(notificationJobs).where(eq(notificationJobs.status, "failed")),
+    loadOperationsStatus(),
   ]);
-  return { services: serviceRows.length, incidents: incidentRows.length, maintenances: maintenanceRows.length, subscribers: subscriberRows.length, failedJobs: failedJobs.length };
+  return { services: serviceRows.length, incidents: incidentRows.length, maintenances: maintenanceRows.length, subscribers: subscriberRows.length, operations };
 });
 
 export interface SubscriberQuery { query?: string; channel?: "all" | "email" | "telegram" | "webex"; status?: "all" | "confirmed" | "pending"; page?: number; }
@@ -163,4 +165,35 @@ export const loadSubscribers = (input: SubscriberQuery = {}) => safely(async () 
   }
   const total = countRow?.count ?? 0;
   return { rows: rows.map((row) => ({ ...row, latestDelivery: latestDelivery.get(row.id) ?? null })), total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) };
+});
+
+export interface NotificationQuery {
+  status?: "all" | "pending" | "processing" | "failed" | "sent" | "cancelled";
+  channel?: "all" | "email" | "telegram" | "webex";
+  page?: number;
+}
+
+export const loadNotificationQueue = (input: NotificationQuery = {}) => safely(async () => {
+  const pageSize = 25;
+  const conditions: SQL[] = [];
+  if (input.status && input.status !== "all") conditions.push(eq(notificationJobs.status, input.status));
+  if (input.channel && input.channel !== "all") conditions.push(eq(subscriptions.channel, input.channel));
+  const where = conditions.length ? and(...conditions) : undefined;
+  const db = getDb();
+  const [countRow] = await db.select({ count: sql<number>`count(*)::int` }).from(notificationJobs)
+    .innerJoin(subscriptions, eq(notificationJobs.subscriptionId, subscriptions.id)).where(where);
+  const total = countRow?.count ?? 0;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const requestedPage = Number.isSafeInteger(input.page) ? input.page! : 1;
+  const page = Math.min(pages, Math.max(1, requestedPage));
+  const rows = await db.select({
+    id: notificationJobs.id, type: notificationJobs.type, status: notificationJobs.status,
+    channel: subscriptions.channel, destination: subscriptions.destination,
+    subject: sql<string>`${notificationJobs.payload}->>'subject'`,
+    attemptCount: notificationJobs.attemptCount, lastError: notificationJobs.lastError,
+    scheduledAt: notificationJobs.scheduledAt, nextRetryAt: notificationJobs.nextRetryAt,
+    sentAt: notificationJobs.sentAt, updatedAt: notificationJobs.updatedAt,
+  }).from(notificationJobs).innerJoin(subscriptions, eq(notificationJobs.subscriptionId, subscriptions.id))
+    .where(where).orderBy(desc(notificationJobs.updatedAt), desc(notificationJobs.id)).limit(pageSize).offset((page - 1) * pageSize);
+  return { rows, total, page, pages };
 });
