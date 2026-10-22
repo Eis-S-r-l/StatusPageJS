@@ -10,7 +10,7 @@ The product decisions and delivery plan are recorded in [IMPLEMENTATION_PLAN.md]
 
 Requirements:
 
-- Node.js 24
+- Node.js 24.22.1 (see `.nvmrc`; run `nvm install && nvm use` when using nvm)
 - npm
 - PostgreSQL 17, or Docker with Docker Compose
 
@@ -66,6 +66,8 @@ git pull --ff-only
 docker compose pull
 docker compose up --no-build -d
 ```
+
+The application containers pin Node.js 24.22.1, which includes the October 21, 2026 security fixes. Runtime security updates require rebuilding and publishing both application images, then pulling and recreating the VM services; pulling an older release does not update its embedded Node.js runtime. Verify the deployed runtime with `docker compose exec web node --version` and `docker compose exec worker node --version`.
 
 For local development or an emergency source build, the existing build definitions remain available through `docker compose up --build -d`.
 
