@@ -195,8 +195,8 @@
 .facts dd { margin: 0; font-size: .83rem; font-weight: 650; }
 .timelineSection h2 { margin-bottom: 24px; }
 .timeline { margin: 0; padding: 0; list-style: none; }
-.timeline li { position: relative; display: grid; grid-template-columns: 18px 1fr; gap: 13px; padding-bottom: 27px; }
-.timeline li:not(:last-child)::before { content: ""; position: absolute; top: 12px; bottom: -2px; left: 5px; width: 1px; background: var(--color-border); }
+.timeline > li { position: relative; display: grid; grid-template-columns: 18px 1fr; gap: 13px; padding-bottom: 27px; }
+.timeline > li:not(:last-child)::before { content: ""; position: absolute; top: 12px; bottom: -2px; left: 5px; width: 1px; background: var(--color-border); }
 .timelineDot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 4px; border: 3px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-surface)); border-radius: 50%; background: var(--color-primary); }
 .timelineMeta strong { font-size: .82rem; }
 .timeline p { margin: 7px 0 0; color: var(--color-muted); font-size: .86rem; line-height: 1.6; }
